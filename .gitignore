@@ -1,0 +1,7 @@
+vendor/
+*.db
+*.sqlite
+.env
+*.sql
+version_bump.sh
+package_versioning.php
