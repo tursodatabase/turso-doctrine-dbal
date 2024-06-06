@@ -1,5 +1,5 @@
 {
-    "name": "darkterminal/turso-doctrine-dbal",
+    "name": "tursodatabase/turso-doctrine-dbal",
     "description": "A Doctribe DBAL Driver implementation on top of LibSQL Extension",
     "type": "library",
     "version": "1.0.2",
