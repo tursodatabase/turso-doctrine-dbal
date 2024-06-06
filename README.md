@@ -37,7 +37,7 @@ LibSQL is a fork of SQLite and this package is **#1 LibSQL Driver** that run nat
 ## Package Installation
 
 ```bash
-composer require darkterminal/turso-doctrine-dbal
+composer require tursodatabase/turso-doctrine-dbal
 ```
 
 ## Configuration
