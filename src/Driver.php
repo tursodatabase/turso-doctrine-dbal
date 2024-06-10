@@ -11,11 +11,46 @@ use SensitiveParameter;
 final class Driver extends AbstractSQLiteDriver
 {
     private LibSQL $connection;
+    protected bool $isStandAlone = true;
 
     public function connect(
         #[SensitiveParameter]
         array $params,
     ): Connection {
+
+        if (
+            isset($params['driverOptions']['use_framework']) &&
+            isset($params['driverOptions']['url']) &&
+            isset($params['driverOptions']['auth_token']) &&
+            isset($params['driverOptions']['sync_url'])
+        ) {
+            $params['url']          = str_replace('sqlite:///', '', $params['driverOptions']['url']);
+            $params['auth_token']   = $params['driverOptions']['auth_token'];
+            $params['sync_url']     = $params['driverOptions']['sync_url'];
+            $this->isStandAlone     = false;
+        } else if (
+            isset($params['driverOptions']['use_framework']) &&
+            !isset($params['driverOptions']['url']) &&
+            isset($params['driverOptions']['auth_token']) &&
+            isset($params['driverOptions']['sync_url'])
+        ) {
+            $params['url']          = null;
+            $params['auth_token']   = $params['driverOptions']['auth_token'];
+            $params['sync_url']     = $params['driverOptions']['sync_url'];
+            $this->isStandAlone     = false;
+        } else if (
+            isset($params['driverOptions']['use_framework']) &&
+            isset($params['path'])
+        ) {
+            $params['url']          = str_replace('sqlite:///', '', $params['path']);
+            $this->isStandAlone     = false;
+        } else if (
+            isset($params['driverOptions']['use_framework']) &&
+            isset($params['memory'])
+        ) {
+            $params['url']          = ':memory:';
+            $this->isStandAlone     = false;
+        }
 
         try {
             switch ($this->getConnectionMode($params)) {
@@ -26,15 +61,27 @@ final class Driver extends AbstractSQLiteDriver
                         "encryption_key"    => ""
                     ];
 
+                    $params['url'] = "file:" . $params['url'];
+
                     $config = \array_merge($params, $defaultParams);
-                    $this->connection = new LibSQL($config);
+
+                    $databaseConfig = [
+                        "url"               => $config['url'],
+                        "authToken"         => $config['auth_token'],
+                        "syncUrl"           => $config['sync_url'],
+                        "syncInterval"      => $config['sync_interval'],
+                        "read_your_writes"  => $config['read_your_writes'],
+                        "encryptionKey"     => $config['encryption_key']
+                    ];
+                    $this->connection = new LibSQL($databaseConfig);
                     break;
                 case 'remote':
                     $this->connection = new LibSQL("libsql:dbname={$params['sync_url']};authToken={$params['auth_token']}");
                     break;
                 case 'local':
                     $encryption_key = !empty($params['encryption_key']) ? $params['encryption_key'] : "";
-                    $this->connection = new LibSQL("libsql:dbname=database.db", LibSQL::OPEN_READWRITE | LibSQL::OPEN_CREATE, $encryption_key);
+                    $database = "file:" . $params['url'];
+                    $this->connection = new LibSQL("libsql:dbname=$database", LibSQL::OPEN_READWRITE | LibSQL::OPEN_CREATE, $encryption_key);
                     break;
                 case 'memory':
                     $this->connection = new LibSQL(":memory:");
@@ -48,7 +95,7 @@ final class Driver extends AbstractSQLiteDriver
             throw Exception::new($e);
         }
 
-        return new Connection($this->connection);
+        return new Connection($this->connection, $this->isStandAlone);
     }
 
     private function getConnectionMode($params): string
