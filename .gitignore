@@ -1,5 +1,6 @@
 vendor/
 *.db
+*.db*
 *.sqlite
 .env
 *.sql
