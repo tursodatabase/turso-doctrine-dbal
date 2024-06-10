@@ -16,19 +16,18 @@ final class Result implements ResultInterface
     public function __construct(
         LibSQLResult $result,
         private readonly bool $isStandAlone
-    )
-    {
+    ) {
         $this->result = $result;
     }
 
     public function fetchNumeric(): array|false
     {
-        return $this->result->fetchArray(LibSQL::LIBSQL_NUM);
+        return current($this->result->fetchArray(LibSQL::LIBSQL_NUM));
     }
 
     public function fetchAssociative(): array|false
     {
-        return $this->result->fetchArray(LibSQL::LIBSQL_ASSOC);
+        return current($this->result->fetchArray(LibSQL::LIBSQL_ASSOC));
     }
 
     public function fetchOne(): mixed
@@ -39,11 +38,7 @@ final class Result implements ResultInterface
             return false;
         }
 
-        if (!$this->isStandAlone) {
-            return $row[0][0];
-        } else {
-            return $row[0];
-        }
+        return $row[0];
     }
 
     public function fetchAllNumeric(): array
@@ -59,13 +54,13 @@ final class Result implements ResultInterface
 
     public function fetchAllAssociative(): array
     {
-        if ($this->fetchAssociative() === false) {
+        if ($this->result->fetchArray(LibSQL::LIBSQL_ASSOC) === false) {
             return [];
         }
 
         return array_map(function ($row) {
             return $row;
-        }, $this->fetchAssociative());
+        }, $this->result->fetchArray(LibSQL::LIBSQL_ASSOC));
     }
 
     public function fetchAllKeyValue(): array
