@@ -13,7 +13,10 @@ final class Result implements ResultInterface
 {
     private LibSQLResult $result;
 
-    public function __construct(LibSQLResult $result)
+    public function __construct(
+        LibSQLResult $result,
+        private readonly bool $isStandAlone
+    )
     {
         $this->result = $result;
     }
@@ -36,7 +39,11 @@ final class Result implements ResultInterface
             return false;
         }
 
-        return $row[0];
+        if (!$this->isStandAlone) {
+            return $row[0][0];
+        } else {
+            return $row[0];
+        }
     }
 
     public function fetchAllNumeric(): array
@@ -89,7 +96,7 @@ final class Result implements ResultInterface
 
     public function fetchFirstColumn(): array
     {
-        return array_map(function($row) {
+        return array_map(function ($row) {
             return $row;
         }, $this->fetchOne());
     }
@@ -106,7 +113,7 @@ final class Result implements ResultInterface
 
     public function free(): void
     {
-        $this->result = [];
+        $this->result = $this->result;
     }
 
     private function ensureHasKeyValue(): void
