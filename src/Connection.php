@@ -5,21 +5,23 @@ declare(strict_types=1);
 namespace Turso\Doctrine\DBAL;
 
 use Doctrine\DBAL\Driver\Connection as ConnectionInterface;
-use Doctrine\DBAL\Driver\Exception\NoIdentityValue;
 use LibSQL;
+use LibSQLTransaction;
 
 final class Connection implements ConnectionInterface
 {
-    private string $sql;
+    private bool $isTransaction = false;
+    private LibSQLTransaction $transaction;
+
     public function __construct(
-        private readonly LibSQL $connection
+        private LibSQL $connection,
+        private readonly bool $isStandAlone
     ) {
     }
 
     public function prepare(string $sql): Statement
     {
         try {
-            $this->sql = $sql;
             $statement = $this->connection->prepare($sql);
         } catch (\Exception $e) {
             throw Exception::new($e);
@@ -27,7 +29,7 @@ final class Connection implements ConnectionInterface
 
         \assert($statement !== false);
 
-        return new Statement($this->connection, $statement, $sql);
+        return new Statement($this->connection, $statement, $sql, $this->isStandAlone);
     }
 
     public static function escapeString($value)
@@ -49,17 +51,31 @@ final class Connection implements ConnectionInterface
 
     public function query(string $sql): Result
     {
-        $this->sql = $sql;
-        return new Result($this->connection->query($sql));
+        try {
+            // echo "Query\n";
+            // echo $sql . PHP_EOL;
+            if (stripos(trim($sql), 'SELECT') !== 0) {
+                // echo "Write";
+                $exec = $this->connection->execute($sql);
+                // dump($exec);
+            }
+            $result = $this->connection->query($sql);
+        } catch (\Exception $e) {
+            throw Exception::new($e);
+        }
+
+        assert($result !== false);
+
+        return new Result($result, $this->isStandAlone);
     }
 
     public function exec(string $sql): int
     {
         $changes = 0;
-        $this->sql = $sql;
 
         try {
-            $changes = $this->connection->execute($sql);
+            $changes = $this->isTransaction ? $this->transaction->execute($sql) : $this->connection->execute($sql);
+            // echo "Exec, in transaction (". ($this->isTransaction ? 'YES' : 'NO') .")\n";
         } catch (\Exception $e) {
             throw Exception::new($e);
         }
@@ -69,18 +85,16 @@ final class Connection implements ConnectionInterface
 
     public function lastInsertId(): int
     {
-        $result = $this->connection->query($this->sql);
-        if (empty($result['rows'])) {
-            throw NoIdentityValue::new();
-        }
-
-        return $result['last_insert_rowid'];
+        // echo "Last insert ID, in transaction (". ($this->isTransaction ? 'YES' : 'NO') .")\n";
+        return $this->isTransaction ? $this->transaction->changes() : $this->connection->changes();
     }
 
     public function beginTransaction(): void
     {
         try {
-            $this->connection->execute('BEGIN');
+            $this->isTransaction = true;
+            $this->transaction = $this->connection->transaction();
+            // echo "Transaction begin, in transaction (". ($this->isTransaction ? 'YES' : 'NO') .")\n";
         } catch (\Exception $e) {
             throw Exception::new($e);
         }
@@ -89,7 +103,11 @@ final class Connection implements ConnectionInterface
     public function commit(): void
     {
         try {
-            $this->connection->execute('COMMIT');
+            if ($this->isTransaction) {
+                $this->transaction->commit();
+                $this->isTransaction = false;
+            }
+            // echo "Committed\n";
         } catch (\Exception $e) {
             throw Exception::new($e);
         }
@@ -98,7 +116,11 @@ final class Connection implements ConnectionInterface
     public function rollBack(): void
     {
         try {
-            $this->connection->execute('ROLLBACK');
+            if ($this->isTransaction) {
+                $this->transaction->rollBack();
+                $this->isTransaction = false;
+            }
+            // echo "Rollback\n";
         } catch (\Exception $e) {
             throw Exception::new($e);
         }
