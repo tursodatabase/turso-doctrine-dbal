@@ -11,11 +11,17 @@
 
 <p align="center">
   <a href="https://turso.tech"><strong>Turso</strong></a> ·
-  <a href="https://darkterminal.mintlify.app/dark-packages/turso-doctrine-dbal/readme"><strong>Quickstart</strong></a> ·
-  <a href="https://darkterminal.mintlify.app/dark-packages/turso-doctrine-dbal/readme"><strong>Examples</strong></a> ·
-  <a href="https://darkterminal.mintlify.app/dark-packages/turso-doctrine-dbal/readme"><strong>Docs</strong></a> ·
+  <a href="https://docs.turso.tech/sdk/php/orm/doctrine-dbal"><strong>Quickstart</strong></a> ·
+  <a href="https://docs.turso.tech/sdk/php/orm/doctrine-dbal"><strong>Examples</strong></a> ·
+  <a href="https://docs.turso.tech/sdk/php/orm/doctrine-dbal"><strong>Docs</strong></a> ·
   <a href="https://discord.com/invite/4B5D7hYwub"><strong>Discord</strong></a> ·
   <a href="https://blog.turso.tech/"><strong>Blog &amp; Tutorials</strong></a>
+</p>
+
+---
+
+<p align="center">
+  <a href="https://tur.so/dt" target="_blank">🚀 I'll give you 10% off Turso Scaler and Pro for 1 Year 🚀</a>
 </p>
 
 ---

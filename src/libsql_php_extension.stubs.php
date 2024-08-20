@@ -186,7 +186,7 @@ namespace {
          *
          * @param int $mode The fetching mode (optional, default is 3).
          *
-         * @return array The fetched result set.
+         * @return array|LibSQLIterator The fetched result set.
          */
         public function fetchArray(int $mode = 3)
         {
@@ -282,6 +282,11 @@ namespace {
          * Return a result sets
          */
         const LIBSQL_ALL = 4;
+
+        /**
+         * Return a result Generator
+         */
+        const LIBSQL_LAZY = 5;
 
         /**
          * The mode of the connection.
@@ -607,6 +612,76 @@ namespace {
          * @return void The result of the sync operation.
          */
         public function sync()
+        {
+        }
+    }
+
+    /**
+     * Class LibSQLIterator
+     *
+     * A custom iterator class for traversing a data structure, typically a PHP array.
+     * The iterator wraps a data object and provides the necessary methods to
+     * iterate through the data.
+     */
+    class LibSQLIterator
+    {
+        /**
+         * Constructor for LibSQLIterator.
+         *
+         * @param mixed $data The data to be iterated over. This can be any type of data,
+         *                    but it is typically expected to be a PHP array or an object
+         *                    that can be iterated over.
+         */
+        public function __construct(mixed $data)
+        {
+        }
+
+        /**
+         * Returns the current element in the iteration.
+         *
+         * @return mixed|null The current element. If no element exists at the current position,
+         *                    this will return null.
+         */
+        public function current()
+        {
+        }
+
+        /**
+         * Returns the key of the current element in the iteration.
+         *
+         * @return int The current key, typically an integer representing the position in the iteration.
+         */
+        public function key()
+        {
+        }
+
+        /**
+         * Moves the iterator to the next element.
+         *
+         * This method advances the internal pointer of the iterator to the next element.
+         */
+        public function next()
+        {
+        }
+
+        /**
+         * Rewinds the iterator to the first element.
+         *
+         * This method resets the internal pointer of the iterator to the start.
+         */
+        public function rewind()
+        {
+        }
+
+        /**
+         * Checks if the current position is valid.
+         *
+         * This method determines whether the current position in the iteration is valid,
+         * i.e., if there is an element at the current position.
+         *
+         * @return bool True if the current position is valid, false otherwise.
+         */
+        public function valid()
         {
         }
     }

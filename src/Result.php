@@ -108,7 +108,7 @@ final class Result implements ResultInterface
 
     public function free(): void
     {
-        $this->result = $this->result;
+        $this->result->reset();
     }
 
     private function ensureHasKeyValue(): void
