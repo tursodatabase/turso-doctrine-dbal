@@ -6,3 +6,4 @@ vendor/
 *.sql
 version_bump.sh
 package_versioning.php
+.idea
