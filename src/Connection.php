@@ -10,26 +10,18 @@ use LibSQLTransaction;
 
 final class Connection implements ConnectionInterface
 {
-    private bool $isTransaction = false;
-    private LibSQLTransaction $transaction;
+    private bool $inTransaction = false;
+    private ?LibSQLTransaction $transaction = null;
 
     public function __construct(
-        private LibSQL $connection,
-        private readonly bool $isStandAlone
+        private readonly LibSQL $connection,
+        private readonly bool $isStandAlone,
     ) {
     }
 
     public function prepare(string $sql): Statement
     {
-        try {
-            $statement = $this->connection->prepare($sql);
-        } catch (\Exception $e) {
-            throw Exception::new($e);
-        }
-
-        \assert($statement !== false);
-
-        return new Statement($this->connection, $statement, $sql, $this->isStandAlone);
+        return new Statement($this, $sql);
     }
 
     public static function escapeString($value)
@@ -52,49 +44,53 @@ final class Connection implements ConnectionInterface
     public function query(string $sql): Result
     {
         try {
-            // echo "Query\n";
-            // echo $sql . PHP_EOL;
-            if (stripos(trim($sql), 'SELECT') !== 0) {
-                // echo "Write";
-                $exec = $this->connection->execute($sql);
-                // dump($exec);
+            if ($this->isReadQuery($sql)) {
+                return Result::forRead($this->executeReadQuery($sql, []));
             }
-            $result = $this->connection->query($sql);
+
+            $affectedRows = $this->currentExecutor()->execute($sql);
+
+            return Result::forWrite($affectedRows);
         } catch (\Exception $e) {
             throw Exception::new($e);
         }
-
-        assert($result !== false);
-
-        return new Result($result, $this->isStandAlone);
     }
 
-    public function exec(string $sql): int
+    public function exec(string $sql): int|string
     {
-        $changes = 0;
-
         try {
-            $changes = $this->isTransaction ? $this->transaction->execute($sql) : $this->connection->execute($sql);
-            // echo "Exec, in transaction (". ($this->isTransaction ? 'YES' : 'NO') .")\n";
+            return $this->currentExecutor()->execute($sql);
         } catch (\Exception $e) {
             throw Exception::new($e);
         }
-
-        return $changes;
     }
 
-    public function lastInsertId(): int
+    public function lastInsertId(): int|string
     {
-        // echo "Last insert ID, in transaction (". ($this->isTransaction ? 'YES' : 'NO') .")\n";
-        return $this->isTransaction ? $this->transaction->changes() : $this->connection->changes();
+        try {
+            if ($this->inTransaction) {
+                $result = $this->transaction?->query('SELECT last_insert_rowid()', []);
+
+                if (is_array($result)) {
+                    return (int) ($result['last_insert_rowid'] ?? 0);
+                }
+
+                $row = $result?->fetchSingle(LibSQL::LIBSQL_NUM);
+
+                return is_array($row) ? (int) $row[0] : 0;
+            }
+
+            return $this->connection->lastInsertedId();
+        } catch (\Exception $e) {
+            throw Exception::new($e);
+        }
     }
 
     public function beginTransaction(): void
     {
         try {
-            $this->isTransaction = true;
             $this->transaction = $this->connection->transaction();
-            // echo "Transaction begin, in transaction (". ($this->isTransaction ? 'YES' : 'NO') .")\n";
+            $this->inTransaction = true;
         } catch (\Exception $e) {
             throw Exception::new($e);
         }
@@ -103,11 +99,9 @@ final class Connection implements ConnectionInterface
     public function commit(): void
     {
         try {
-            if ($this->isTransaction) {
-                $this->transaction->commit();
-                $this->isTransaction = false;
-            }
-            // echo "Committed\n";
+            $this->transaction?->commit();
+            $this->transaction = null;
+            $this->inTransaction = false;
         } catch (\Exception $e) {
             throw Exception::new($e);
         }
@@ -116,11 +110,9 @@ final class Connection implements ConnectionInterface
     public function rollBack(): void
     {
         try {
-            if ($this->isTransaction) {
-                $this->transaction->rollBack();
-                $this->isTransaction = false;
-            }
-            // echo "Rollback\n";
+            $this->transaction?->rollback();
+            $this->transaction = null;
+            $this->inTransaction = false;
         } catch (\Exception $e) {
             throw Exception::new($e);
         }
@@ -134,5 +126,45 @@ final class Connection implements ConnectionInterface
     public function getServerVersion(): string
     {
         return LibSQL::version();
+    }
+
+    public function executeStatement(string $sql, array $parameters): Result
+    {
+        try {
+            if ($this->isReadQuery($sql)) {
+                return Result::forRead($this->executeReadQuery($sql, $parameters));
+            }
+
+            $affectedRows = $this->currentExecutor()->execute($sql, $parameters);
+
+            return Result::forWrite($affectedRows);
+        } catch (\Exception $e) {
+            throw Exception::new($e);
+        }
+    }
+
+    private function currentExecutor(): LibSQL|LibSQLTransaction
+    {
+        return $this->transaction ?? $this->connection;
+    }
+
+    private function executeReadQuery(string $sql, array $parameters): \LibSQLResult
+    {
+        if ($this->transaction !== null) {
+            $result = $this->transaction->query($sql, $parameters);
+
+            if (!$result instanceof \LibSQLResult) {
+                throw new \RuntimeException('Expected LibSQLResult for transactional read query.');
+            }
+
+            return $result;
+        }
+
+        return $this->connection->query($sql, $parameters);
+    }
+
+    private function isReadQuery(string $sql): bool
+    {
+        return preg_match('/^(SELECT|PRAGMA|EXPLAIN|WITH)\b/i', ltrim($sql)) === 1;
     }
 }

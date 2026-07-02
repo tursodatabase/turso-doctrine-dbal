@@ -6,41 +6,47 @@ namespace Turso\Doctrine\DBAL;
 
 use Doctrine\DBAL\Driver\Statement as StatementInterface;
 use Doctrine\DBAL\ParameterType;
-use LibSQL;
-use LibSQLStatement;
 
 final class Statement implements StatementInterface
 {
-    protected array $parameters = [];
+    /** @var array<int|string, mixed> */
+    private array $parameters = [];
 
     public function __construct(
-        private readonly LibSQL $connection,
-        private readonly LibSQLStatement $statement,
+        private readonly Connection $connection,
         private readonly string $sql,
-        private readonly bool $isStandAlone
     ) {
     }
 
     public function bindValue(int|string $param, mixed $value, ParameterType $type): void
     {
-        if (!preg_match('/^[:@]/', (string) $param)) {
-            $this->parameters[] = $value;
-        } else {
-            $this->parameters[$param] = $value;
+        if (is_int($param)) {
+            $this->parameters[$param - 1] = $value;
+
+            return;
         }
+
+        $this->parameters[$param] = $value;
     }
 
     public function execute(): Result
     {
+        ksort($this->parameters);
+        $result = $this->connection->executeStatement($this->sql, $this->normalizeParameters());
+        $this->parameters = [];
 
-        $result = $this->connection->query($this->sql, $this->parameters);
-        $this->reset();
-
-        return new Result($result, $this->isStandAlone);
+        return $result;
     }
 
-    public function reset(): void
+    /** @return array<int|string, mixed> */
+    private function normalizeParameters(): array
     {
-        $this->parameters = [];
+        foreach (array_keys($this->parameters) as $key) {
+            if (is_string($key)) {
+                return $this->parameters;
+            }
+        }
+
+        return array_values($this->parameters);
     }
 }
