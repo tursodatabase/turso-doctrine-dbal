@@ -178,6 +178,74 @@ rollback/commit, `doctrine:migrations:migrate` through the driver — see the
 - [open issues](https://github.com/tursodatabase/turso-doctrine-dbal/issues) —
   known limitations are tracked in the open
 
+## Offline-write modes
+
+libSQL can apply writes to a local journal and push them to the server later —
+either journaling through a local embedded replica to Turso Cloud (**journaled
+flavor**), or against a self-hosted `sqld` (**sqld flavor**). Both need the
+libSQL extension ≥ 1.7.0 and are wired through two connection flags
+(`sqld_offline_mode` and `offline_writes`), mirroring the Laravel driver.
+
+### Turso Cloud flavor
+
+Embedded replica against Turso Cloud, journaled writes, manual `sync()` to push:
+
+```php
+$params = [
+    'url' => 'database.sqlite',          // local replica file
+    'auth_token' => $_ENV['TURSO_AUTH_TOKEN'],
+    'sync_url' => $_ENV['TURSO_SYNC_URL'],
+    'sync_interval' => 0,                // required for offline mode — manual sync only
+    'read_your_writes' => true,
+    'driverClass' => \Turso\Doctrine\DBAL\Driver::class,
+    'offline_writes' => true,            // sqld_offline_mode stays false
+];
+```
+
+Writes go to the local file until `sync()` pushes them. The server never sees
+unsynced writes — verified against a live Turso Cloud database
+(`TURSO_CLOUD_DB_URL` / `TURSO_CLOUD_DB_TOKEN`-gated proof in
+[`tests/Feature/TursoCloudOfflineWriteTest.php`](tests/Feature/TursoCloudOfflineWriteTest.php)).
+
+### Self-hosted sqld flavor
+
+An embedded replica journaled against a local `sqld`, or against a `sqld`
+server you run yourself:
+
+```php
+$params = [
+    'url' => 'database.sqlite',
+    'auth_token' => $_ENV['TURSO_AUTH_TOKEN'],
+    'sync_url' => 'http://127.0.0.1:8080',
+    'sync_interval' => 0,
+    'read_your_writes' => true,
+    'driverClass' => \Turso\Doctrine\DBAL\Driver::class,
+    'sqld_offline_mode' => true,
+    'offline_writes' => true,
+];
+```
+
+Writes journal locally; `sync()` drains the journal to the server. Pending
+operations and connectivity are inspectable:
+
+```php
+$conn->getNativeConnection()->isOnline();                  // bool
+$conn->getNativeConnection()->getPendingOperationsCount(); // int
+$conn->getNativeConnection()->sync();                      // push journaled rows
+```
+
+Writes against a reachable server go straight through; with the server
+unreachable, they journal locally until the next `sync()`.
+
+**Bootstrap requirement (Turso Cloud):** call `sync()` once on a fresh replica
+file **before** any write — otherwise the push fails with a frame conflict.
+
+Both flavors are covered by env-gated tests:
+
+- `OfflineWriteTest` (sqld): outage → journal → reconnect → drain cycle
+- `TursoCloudOfflineWriteTest` (cloud): journaled writes pushed via `sync()`
+  and verified server-side, cleanup verified
+
 ## Testing
 
 ```bash
@@ -185,8 +253,10 @@ composer install
 ./vendor/bin/phpunit
 ```
 
-Server-dependent (remote/replica) tests are skipped by default. They run in CI
-against a seeded `libsql-server` on `8081`/`8082`.
+Server-dependent tests are skipped by default. Remote/replica tests need a
+seeded `sqld` on `8081`/`8082` and run under `TURSO_SQLD_AVAILABLE=true`
+(seeded in CI). The Turso Cloud flavor is skipped separately and never touches
+the cloud unless `TURSO_CLOUD_DB_URL` / `TURSO_CLOUD_DB_TOKEN` are set.
 
 ## Changelog
 
