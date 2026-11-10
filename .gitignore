@@ -7,3 +7,4 @@ vendor/
 version_bump.sh
 package_versioning.php
 .idea
+.phpunit.cache/

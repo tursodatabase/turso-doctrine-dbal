@@ -1,0 +1,92 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: php ${{ matrix.php }} · dbal ${{ matrix.dbal }}
+    runs-on: ubuntu-latest
+
+    services:
+      sqld-remote:
+        image: ghcr.io/tursodatabase/libsql-server:latest
+        ports:
+          - 8081:8080
+      sqld-replica:
+        image: ghcr.io/tursodatabase/libsql-server:latest
+        ports:
+          - 8082:8080
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { php: '8.2', dbal: '4.0.2' }
+          - { php: '8.3', dbal: '4.0.2' }
+          - { php: '8.4', dbal: '4.0.2' }
+          - { php: '8.5', dbal: '4.0.2' }
+          - { php: '8.2', dbal: '^4.5' }
+          - { php: '8.3', dbal: '^4.5' }
+          - { php: '8.4', dbal: '^4.5' }
+          - { php: '8.5', dbal: '^4.5' }
+          - { php: '8.4', dbal: '^5.0@dev' }
+          - { php: '8.5', dbal: '^5.0@dev' }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Install libSQL extension (php ${{ matrix.php }})
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/libsql-conf.d
+          url="https://github.com/tursodatabase/turso-client-php/releases/download/turso-php-extension-v1.7.0/libsql_php-turso-php-extension-v1.7.0-php-${{ matrix.php }}-nts-x86_64-unknown-linux-gnu.tar.gz"
+          curl -fsSL -o /tmp/libsql.tar.gz "$url"
+          tar -xzf /tmp/libsql.tar.gz -C /tmp
+          SO_PATH="$(find /tmp -name 'liblibsql_php.so' | head -n 1)"
+          echo "extension=${SO_PATH}" > /tmp/libsql-conf.d/70-libsql.ini
+          PHP_INI_SCAN_DIR=/tmp/libsql-conf.d php -m | grep -i libsql
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      - name: Switch dbal (non-default legs)
+        if: matrix.dbal != '4.0.2'
+        run: composer require "doctrine/dbal:${{ matrix.dbal }}" -W --no-interaction --no-progress
+
+      - name: composer audit
+        run: composer audit || true
+
+      - name: Seed sqld (initialize WAL so embedded replicas can sync)
+        run: |
+          for PORT in 8081 8082; do
+            for i in $(seq 1 30); do
+              if curl -sf -m 2 -X POST http://127.0.0.1:${PORT}/v2/pipeline                 -H 'Content-Type: application/json'                 -d '{"requests":[{"type":"execute","stmt":{"sql":"CREATE TABLE IF NOT EXISTS _boot (id INTEGER PRIMARY KEY)"}},{"type":"close"}]}' > /dev/null 2>&1; then
+                echo "sqld on ${PORT} ready and seeded"
+                break
+              fi
+              sleep 1
+            done
+          done
+
+      - name: Example smoke
+        env:
+          PHP_INI_SCAN_DIR: /tmp/libsql-conf.d
+        run: php example/index.php
+
+      - name: Tests
+        env:
+          TURSO_SQLD_AVAILABLE: true
+          PHP_INI_SCAN_DIR: /tmp/libsql-conf.d
+        run: vendor/bin/phpunit

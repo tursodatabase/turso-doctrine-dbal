@@ -27,5 +27,16 @@
         "turso",
         "sqlite"
     ],
-    "homepage": "https://github.com/tursodatabase/turso-doctrine-dbal"
+    "homepage": "https://github.com/tursodatabase/turso-doctrine-dbal",
+    "require-dev": {
+        "phpunit/phpunit": "^11"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Turso\\Doctrine\\DBAL\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
 }

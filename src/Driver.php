@@ -4,19 +4,22 @@ declare(strict_types=1);
 
 namespace Turso\Doctrine\DBAL;
 
-use Doctrine\DBAL\Driver\AbstractSQLiteDriver;
+use Doctrine\DBAL\Driver as DbalDriverInterface;
+use Doctrine\DBAL\Driver\API\SQLite\ExceptionConverter;
+use Doctrine\DBAL\Platforms\SQLitePlatform;
+use Doctrine\DBAL\ServerVersionProvider;
 use LibSQL;
 use SensitiveParameter;
 
-final class Driver extends AbstractSQLiteDriver
+final class Driver implements DbalDriverInterface
 {
-    private LibSQL $connection;
-    protected bool $isStandAlone = true;
 
     public function connect(
         #[SensitiveParameter]
         array $params,
     ): Connection {
+        $isStandAlone = true;
+
         $driverOptions = $params['driverOptions'] ?? $params['options'] ?? [];
 
         if (
@@ -28,7 +31,7 @@ final class Driver extends AbstractSQLiteDriver
             $params['url'] = str_replace('sqlite:///', '', (string) $driverOptions['url']);
             $params['auth_token'] = (string) $driverOptions['auth_token'];
             $params['sync_url'] = (string) $driverOptions['sync_url'];
-            $this->isStandAlone = false;
+            $isStandAlone = false;
         } elseif (
             ($driverOptions['use_framework'] ?? false) === true &&
             array_key_exists('auth_token', $driverOptions) &&
@@ -37,13 +40,13 @@ final class Driver extends AbstractSQLiteDriver
             $params['url'] = $params['url'] ?? ':memory:';
             $params['auth_token'] = (string) $driverOptions['auth_token'];
             $params['sync_url'] = (string) $driverOptions['sync_url'];
-            $this->isStandAlone = false;
+            $isStandAlone = false;
         } elseif (($driverOptions['use_framework'] ?? false) === true && isset($params['path'])) {
             $params['url'] = str_replace('sqlite:///', '', (string) $params['path']);
-            $this->isStandAlone = false;
+            $isStandAlone = false;
         } elseif (($driverOptions['use_framework'] ?? false) === true && isset($params['memory'])) {
             $params['url'] = ':memory:';
-            $this->isStandAlone = false;
+            $isStandAlone = false;
         }
 
         $params['url'] ??= ':memory:';
@@ -69,11 +72,11 @@ final class Driver extends AbstractSQLiteDriver
                         'encryptionKey' => $config['encryption_key'],
                     ];
 
-                    $this->connection = new LibSQL($databaseConfig);
+                    $connection = new LibSQL($databaseConfig);
                     break;
 
                 case 'remote':
-                    $this->connection = new LibSQL(sprintf(
+                    $connection = new LibSQL(sprintf(
                         'libsql:dbname=%s;authToken=%s',
                         $params['sync_url'],
                         $params['auth_token'],
@@ -83,7 +86,7 @@ final class Driver extends AbstractSQLiteDriver
                 case 'local':
                     $encryptionKey = !empty($params['encryption_key']) ? (string) $params['encryption_key'] : '';
                     $database = 'file:'.$params['url'];
-                    $this->connection = new LibSQL(
+                    $connection = new LibSQL(
                         "libsql:dbname=$database",
                         LibSQL::OPEN_READWRITE | LibSQL::OPEN_CREATE,
                         $encryptionKey,
@@ -91,7 +94,7 @@ final class Driver extends AbstractSQLiteDriver
                     break;
 
                 case 'memory':
-                    $this->connection = new LibSQL(':memory:');
+                    $connection = new LibSQL(':memory:');
                     break;
 
                 default:
@@ -101,7 +104,19 @@ final class Driver extends AbstractSQLiteDriver
             throw Exception::new($e);
         }
 
-        return new Connection($this->connection, $this->isStandAlone);
+        return new Connection($connection, $isStandAlone);
+    }
+
+    public function getDatabasePlatform(ServerVersionProvider $versionProvider): SQLitePlatform
+    {
+        // No readonly mismatch to inherit: this package implements the plain
+        // Doctrine\DBAL\Driver contract, identical across dbal 4.x and 5.0.
+        return new SQLitePlatform();
+    }
+
+    public function getExceptionConverter(): ExceptionConverter
+    {
+        return new ExceptionConverter();
     }
     private function getConnectionMode(array $params): string
     {
