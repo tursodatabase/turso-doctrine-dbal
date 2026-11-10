@@ -171,6 +171,8 @@ rollback/commit, `doctrine:migrations:migrate` through the driver — see the
   persistence fix, binary support in 1.4.0, and the DBAL 4 compliance rework
 - [Symfony proof harness](docker/symfony-proof/README.md) — how to reproduce
   every claim on this page from a clean checkout
+- [Turso Cloud proof harness](docker/cloud-proof/README.md) — same for the
+  Turso Cloud offline-writes flavor against a live cloud database
 - [Turso documentation](https://docs.turso.tech/sdk/php/orm/doctrine-dbal) —
   official quickstart, examples and API reference for this package
 - [turso-client-php](https://github.com/tursodatabase/turso-client-php) — the
