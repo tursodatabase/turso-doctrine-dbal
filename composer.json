@@ -2,7 +2,7 @@
     "name": "tursodatabase/turso-doctrine-dbal",
     "description": "A Doctrine DBAL driver for libSQL (Turso) built on the native LibSQL PHP extension",
     "type": "library",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "require": {
         "php": "^8.2",
         "doctrine/dbal": "^4.0"
