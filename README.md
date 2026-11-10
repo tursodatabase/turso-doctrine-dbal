@@ -1,169 +1,263 @@
 <p align="center">
-  <a href="https://github.com/darkterminal/turso-doctrine-dbal">
-    <img alt="Turso + TypeScript" src="https://i.imgur.com/r009n2u.png" width="1000">
-    <h3 align="center">Turso + Doctrine DBAL</h3>
+  <a href="https://github.com/tursodatabase/turso-doctrine-dbal">
+    <img alt="Turso + Doctrine DBAL" src="https://i.imgur.com/r009n2u.png" width="1000">
   </a>
 </p>
 
-<p align="center">
-  SQLite for Production. Powered by <a href="https://turso.tech/libsql">libSQL</a> and <a href="https://github.com/darkterminal/libsql-extension">libSQL Extension</a> for PHP.
-</p>
+<h3 align="center">A native libSQL driver for Doctrine DBAL</h3>
 
 <p align="center">
-  <a href="https://turso.tech"><strong>Turso</strong></a> ·
-  <a href="https://docs.turso.tech/sdk/php/orm/doctrine-dbal"><strong>Quickstart</strong></a> ·
-  <a href="https://docs.turso.tech/sdk/php/orm/doctrine-dbal"><strong>Examples</strong></a> ·
-  <a href="https://docs.turso.tech/sdk/php/orm/doctrine-dbal"><strong>Docs</strong></a> ·
-  <a href="https://discord.com/invite/4B5D7hYwub"><strong>Discord</strong></a> ·
-  <a href="https://blog.turso.tech/"><strong>Blog &amp; Tutorials</strong></a>
+  SQLite-compatible embedded and remote databases for Doctrine-based PHP
+  applications, powered by the <a href="https://turso.tech/libsql">libSQL</a>
+  engine and the native <a href="https://github.com/tursodatabase/turso-client-php">libSQL PHP extension</a>.
 </p>
 
 ---
 
-<h1 id="a-libsql-driver-for-doctrine" align="center">A LibSQL Driver for Doctrine DBAL</h1>
+`tursodatabase/turso-doctrine-dbal` implements Doctrine DBAL's driver contract
+on top of the native libSQL extension — not on PDO. Standard DBAL
+`executeQuery` / `executeStatement`, transactions, streaming fetch iteration,
+and schema introspection (`getColumnName()`) all work through the
+[`LibSQL`](src/) connection.
 
-<p align="center">
-  <a href="https://discord.gg/turso">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://i.imgur.com/UhuW3zm.png">
-      <source media="(prefers-color-scheme: light)" srcset="https://i.imgur.com/vljWbfr.png">
-      <img alt="Shows a black logo in light color mode and a white one in dark color mode." src="https://i.imgur.com/vGCC0I4.png">
-    </picture>
-  </a>
-</p>
+## Requirements
 
-LibSQL is a fork of SQLite and this package is **#1 LibSQL Driver** that run natively using LibSQL Native Extension/Driver/Whatever and support Doctrine DBAL.
+| Component | Requirement |
+|---|---|
+| PHP | 8.2, 8.3, 8.4 or 8.5 |
+| doctrine/dbal | `^4.0` — CI tests 4.0.2, 4.5.1 and 5.0.x-dev |
+| libSQL PHP extension | `1.7.0` or later |
+| Turso credentials (remote/replica modes) | token + sync URL — see [Configuration](#configuration) |
 
-## Requirement
+> `Doctrine\DBAL\Result::getColumnName()` (used by schema introspection) requires dbal **4.1.0+**.
 
-**Before using this package**, you need to install and configure **LibSQL Native Extension for PHP**. You can download from **[LibSQL Extension - Release](https://github.com/darkterminal/libsql-extension)**
-
-1. 📦 Extract the archive
-2. 🗃 Locate somewhere in your machine
-3. 💽 Copy a relative path that address that extension/driver
-4. 📂 Open `php.ini` search `;extension` if you using nano (ctrl+w) then searching for it
-5. 📝 add in the next-line `extension=liblibsql_php.so` (in Linux) without `;` at the begining
-
-## Package Installation
+## Installation
 
 ```bash
 composer require tursodatabase/turso-doctrine-dbal
 ```
 
+Install the libSQL PHP extension — one of two ways:
+
+**Laravel projects** — via the Artisan installer:
+
+```bash
+composer require darkterminal/turso-php-installer
+php artisan turso-php:install
+```
+
+**Any stack** — download the tarball for your platform from
+[turso-client-php releases](https://github.com/tursodatabase/turso-client-php/releases),
+then enable it in `php.ini`:
+
+```ini
+extension=liblibsql_php.so     ; Linux (.dll on Windows)
+```
+
+Verify:
+
+```bash
+php -m | grep libsql
+php -r 'echo LibSQL::version(), PHP_EOL;'
+```
+
 ## Configuration
 
-LibSQL has 4 types of connections to interact with the database: In-Memory Connection, Local Connection, Remote Connection, and Remote Replica Connection (Embedded Replica).
+Four connection modes. Example parameters (all feed straight into Doctrine's
+`DriverManager::getConnection([...])`):
 
-### In-Memory Connection
-
-```php
-$params = [
-    "url"               => ":memory:",
-    'driverClass'       => \Turso\Doctrine\DBAL\Driver::class,
-];
-```
-
-### Local Connection
+### In-memory
 
 ```php
 $params = [
-    "url"               => "database.db",
-    'driverClass'       => \Turso\Doctrine\DBAL\Driver::class,
+    'url' => ':memory:',
+    'driverClass' => \Turso\Doctrine\DBAL\Driver::class,
 ];
 ```
 
-If you want to create Remote Connection or Remote Replica (Embedded Replica) Connection, you will need an existing database to continue. If you don’t have one, **[create one](https://docs.turso.tech/quickstart)**.
-
-Get the database URL:
-```shell
-turso db show --url <database-name>
-```
-
-Get the database authentication token:
-```shell
-turso db tokens create <database-name>
-```
-
-If you use `.env` file, assign credentials to the environment variables inside `.env`.
-```env
-TURSO_DATABASE_URL=
-TURSO_AUTH_TOKEN=
-```
-
-### Remote Connection
+### Local file
 
 ```php
 $params = [
-    "auth_token"        => "<your-database-auth-token-from-turso>",
-    "sync_url"          => "<your-database-url-from-turso>",
-    'driverClass'       => \Turso\Doctrine\DBAL\Driver::class,
+    'url' => 'database.sqlite',
+    'driverClass' => \Turso\Doctrine\DBAL\Driver::class,
 ];
 ```
 
-### Remote Replica (Embedded Replica) Connection
+### Remote (Turso Cloud)
 
 ```php
 $params = [
-    "url"               => "database.db",
-    "auth_token"        => "<your-database-auth-token-from-turso>",
-    "sync_url"          => "<your-database-url-from-turso>",
-    "sync_interval"     => 5,    // Optional, default is: 5 in seconds
-    "read_your_writes"  => true, // Optional, default is: true
-    "encryption_key"    => "",   // Optional, default is: empty
-    'driverClass'       => \Turso\Doctrine\DBAL\Driver::class,
+    'url' => ':memory:',          // or a local filename for embedded replica
+    'auth_token' => $_ENV['TURSO_AUTH_TOKEN'],
+    'sync_url' => $_ENV['TURSO_SYNC_URL'],   // e.g. libsql://your-db.turso.io
+    'driverClass' => \Turso\Doctrine\DBAL\Driver::class,
 ];
 ```
+
+### Remote replica (embedded replica)
+
+```php
+$params = [
+    'url' => 'database.sqlite',   // local replica file
+    'auth_token' => $_ENV['TURSO_AUTH_TOKEN'],
+    'sync_url' => $_ENV['TURSO_SYNC_URL'],
+    'sync_interval' => 5,          // optional, default 5 (seconds)
+    'read_your_writes' => true,    // optional, default true
+    'driverClass' => \Turso\Doctrine\DBAL\Driver::class,
+];
+```
+
+> Get credentials: `turso db show --url <db-name>` and `turso db tokens create <db-name>`,
+> or the [Turso dashboard](https://dashboard.turso.io). Never commit tokens — read them from the environment.
+
+### Connection mode selection
+
+| Conditions | Mode |
+|---|---|
+| `url` ends in `.db`/`.sqlite` with no `sync_url` | `local` |
+| `url` ends in `.db`/`.sqlite` with `sync_url` + `auth_token` | `remote_replica` |
+| `sync_url` without a local file | `remote` |
+| everything else | `:memory:` |
+
+> Note: Writing `sqlite://path/to.db` is **not** required and won't behave as a file URL.
+> Use a plain filename — the driver checks for `.db`/`.sqlite` substrings.
 
 ## Usage
 
 ```php
+<?php
+require __DIR__ . '/vendor/autoload.php';
+
 use Doctrine\DBAL\DriverManager;
+use Turso\Doctrine\DBAL\Driver;
 
-require_once __DIR__ . '/vendor/autoload.php';
+$conn = DriverManager::getConnection([
+    'url' => ':memory:',
+    'driverClass' => Driver::class,
+]);
 
-$params = [
-    "url"               => ":memory:",
-    'driverClass'       => \Turso\Doctrine\DBAL\Driver::class,
-];
+$conn->executeStatement('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, age INTEGER)');
+$conn->executeStatement('INSERT INTO users (name, age) VALUES (?, ?)', ['Budi Dalton', 49]);
 
-$db = DriverManager::getConnection($params);
-
-$createTable = "CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    age INTEGER
-)";
-$db->executeStatement($createTable);
-
-$insertUsers = <<<SQL
-INSERT INTO users (name, age) VALUES ('Budi Dalton', 49);
-INSERT INTO users (name, age) VALUES ('Sujiwo Tedjo', 50);
-SQL;
-
-$db->getNativeConnection()->executeBatch($insertUsers);
-
-$result = $db->executeQuery("SELECT * FROM users")->fetchAllAssociative();
-var_dump($result);
-$db->close();
+$rows = $conn->executeQuery('SELECT * FROM users ORDER BY id')->fetchAllAssociative();
+print_r($rows);
 ```
 
----
+Conventions (compatible with all Doctrine DBAL APIs):
 
-## Documentation
+- **Prepared parameters are positional** (`?` bindings numbered from 1) or named
+  (`:name`) — both work; don't mix them in the same statement
+- **Transactions**: `beginTransaction()` / `commit()` / `rollBack()` (nested/
+  savepoints are not supported — see Limitations)
+- **Streaming**: iterate `$stmt->fetchAssociative()` in a `while` loop —
+  `fetchAllAssociative()` also buffers lazily; nothing returns a row twice
+- **Writes throw**: `executeStatement` / `executeQuery` throw on constraint
+  violations instead of returning `false` silently
+- **`lastInsertId()`** returns a numeric string for identity columns
 
-1. [Turso Quickstart](https://docs.turso.tech/quickstart) &mdash; Learn how create and connect your first database.
-2. [SDK Quickstart](#) &mdash; Learn how to install and execute queries using the libSQL client.
-3. [SDK Reference](#) &mdash; Dive deeper with the libSQL SDK reference and examples.
+## Symfony (doctrine-bundle)
 
-### What is Turso?
+```yaml
+# config/packages/doctrine.yaml
+doctrine:
+    dbal:
+        driver_class: Turso\Doctrine\DBAL\Driver
+        url: '%env(resolve:DATABASE_URL)%'
+```
 
-[Turso](https://turso.tech) is a SQLite-compatible database built on [libSQL](https://docs.turso.tech/libsql), the Open Contribution fork of SQLite. It enables scaling to hundreds of thousands of databases per organization and supports replication to any location, including your own servers, for microsecond-latency access.
+```dotenv
+# .env
+DATABASE_URL=var/proof.db
+```
 
-Learn more about what you can do with Turso:
+> **Note (Symfony):** put a **plain filename** in `DATABASE_URL` — not a `sqlite://` DSN.
+> The recipe does not translate schemes for custom `driver_class`; the driver
+> handles the filename itself. Since 1.3.1 the driver also falls back to `dbname`
+> automatically when dbal/Symfony inject the recipe-default `url: :memory:`, so
+> persistence through the recipe works out of the box.
 
-- [Embedded Replicas](https://docs.turso.tech/features/embedded-replicas)
-- [Platform API](https://docs.turso.tech/features/platform-api)
-- [Data Edge](https://docs.turso.tech/features/data-edge)
-- [Branching](https://docs.turso.tech/features/branching)
-- [Point-in-Time Recovery](https://docs.turso.tech/features/point-in-time-recovery)
-- [Scale to Zero](https://docs.turso.tech/features/scale-to-zero)
+Migrations work through doctrine/migrations like any other DBAL connection.
+A full proof harness — fresh Symfony 7.4 app, real migration, ORM round trip,
+transaction rollback/commit — lives in [`docker/symfony-proof/`](docker/symfony-proof/).
+It reports a single machine-parseable line:
+
+```
+PROOF-SYMFONY: {"ok":10,"fail":0,"all_ok":true}
+```
+
+## What's verified
+
+Everything on this page that is claimed as *verified* is reproduced by CI or a
+proof harness in this repository — nothing here is aspirational.
+
+- **CI matrix** ([GitHub Actions](https://github.com/tursodatabase/turso-doctrine-dbal/actions)):
+  PHP 8.2 / 8.3 / 8.4 / 8.5 × doctrine/dbal **4.0.2**, **^4.5** and **5.0.x-dev**
+  — 10 legs, sqlite seeded on 8081/8082 for embedded-replica tests
+- **Test suite**: [`./vendor/bin/phpunit`](composer.json) — feature tests for
+  DDL/DML, streaming fetch, multi-row iteration, transactions, transactional
+  reads, `lastInsertId()`, `getColumnName()`; unit tests for connection-mode
+  detection and quoting
+- **Symfony proof**: [`docker/symfony-proof/proof.sh`](docker/symfony-proof/proof.sh)
+  — fresh skeleton, real migration, 10 end-to-end assertions
+- **Wire protocol**: libSQL extension 1.7.0 source-of-truth (see
+  [turso-client-php](https://github.com/tursodatabase/turso-client-php))
+
+## Example
+
+See [`example/index.php`](example/index.php) for a runnable smoke application
+(create table → insert → select → print).
+
+## Limitations
+
+Explicitly not hidden (all tracked as issues):
+
+- **Binary/BLOB parameters bind as NULL** — binding raw binary strings
+  (`ParameterType::BINARY`) stores NULL instead of the bytes (extension
+  limitation). Workaround: base64-encode payloads or use `x'<hex>'` literals.
+  See [issue #3](https://github.com/tursodatabase/turso-doctrine-dbal/issues/3).
+- **No nested transactions or savepoints** — the extension does not expose
+  savepoints; nested `beginTransaction()` calls are not supported
+- **No offline-write mode** — `sqld_offline_write` / `offline_writes`
+  (libSQL's offline-write beta) is not wired up in this driver; see the
+  Laravel driver's proof for the equivalent scope
+- **`getColumnName()`** on `Doctrine\DBAL\Result` requires dbal ≥ 4.1.0
+- **`:memory:` persistence trap on Symfony** — prior to 1.3.1, Symfony
+  injected `url: :memory:` and `driverClass` lost the DSN and opened
+  in-memory databases per process; fixed in 1.3.1 via `dbname` fallback
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
+
+## Testing
+
+```bash
+composer install
+./vendor/bin/phpunit
+```
+
+Remote/replica tests are skipped by default. To run them:
+
+```bash
+TURSO_SQLD_AVAILABLE=true ./vendor/bin/phpunit
+```
+
+(requires a seeded sqld on `127.0.0.1:8081` / `8082` — see CI for the seed
+script and `docker/proof` in the Laravel driver for a self-contained harness).
+
+## Security
+
+If you find a security vulnerability, please do **not** open a public issue.
+Report it privately via a GitHub security advisory (or to the maintainer via
+the email in `composer.json`), and we will coordinate a fix.
+
+## Contributing
+
+See [open issues](https://github.com/tursodatabase/turso-doctrine-dbal/issues).
+Changes should pass CI and the proof harness, with tests for any behavior
+change. The house style is: prove it first, then document it.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
