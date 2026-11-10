@@ -47,7 +47,7 @@ jobs:
           php-version: ${{ matrix.php }}
           coverage: none
 
-      - name: Install libSQL extension (php ${{ matrix.php }})
+      - name: Download libSQL extension (php ${{ matrix.php }})
         run: |
           set -euo pipefail
           mkdir -p /tmp/libsql-ext
@@ -55,11 +55,8 @@ jobs:
           curl -fsSL -o /tmp/libsql-ext/libsql.tar.gz "$url"
           tar -xzf /tmp/libsql-ext/libsql.tar.gz -C /tmp/libsql-ext
           SO_PATH="$(find /tmp/libsql-ext -name 'liblibsql_php.so' -print -quit)"
-          EXT_DIR="$(php -r 'echo ini_get("extension_dir");')"
-          INI_DIR="$(php --ini | awk -F': ' '/Scan for additional .ini files in/ {print $2}')"
-          cp "$SO_PATH" "$EXT_DIR/"
-          echo 'extension=liblibsql_php.so' > "$INI_DIR/70-libsql.ini"
-          php -m | tr 'A-Z' 'a-z' | grep libsql
+          echo "SO_PATH=$SO_PATH" >> "$GITHUB_ENV"
+          php -d extension="$SO_PATH" -r 'echo "libsql loaded: ", (class_exists("LibSQL") ? "yes" : "no"), PHP_EOL;'
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
@@ -84,9 +81,9 @@ jobs:
           done
 
       - name: Example smoke
-        run: php example/index.php
+        run: php -d extension="$SO_PATH" example/index.php
 
       - name: Tests
         env:
           TURSO_SQLD_AVAILABLE: true
-        run: vendor/bin/phpunit
+        run: php -d extension="$SO_PATH" vendor/bin/phpunit
