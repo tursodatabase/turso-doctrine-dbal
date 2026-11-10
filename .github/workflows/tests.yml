@@ -50,11 +50,11 @@ jobs:
       - name: Install libSQL extension (php ${{ matrix.php }})
         run: |
           set -euo pipefail
-          mkdir -p /tmp/libsql-conf.d
+          mkdir -p /tmp/libsql-conf.d /tmp/libsql-ext
           url="https://github.com/tursodatabase/turso-client-php/releases/download/turso-php-extension-v1.7.0/libsql_php-turso-php-extension-v1.7.0-php-${{ matrix.php }}-nts-x86_64-unknown-linux-gnu.tar.gz"
-          curl -fsSL -o /tmp/libsql.tar.gz "$url"
-          tar -xzf /tmp/libsql.tar.gz -C /tmp
-          SO_PATH="$(find /tmp -name 'liblibsql_php.so' | head -n 1)"
+          curl -fsSL -o /tmp/libsql-ext/libsql.tar.gz "$url"
+          tar -xzf /tmp/libsql-ext/libsql.tar.gz -C /tmp/libsql-ext
+          SO_PATH="$(find /tmp/libsql-ext -name 'liblibsql_php.so' -print -quit)"
           echo "extension=${SO_PATH}" > /tmp/libsql-conf.d/70-libsql.ini
           PHP_INI_SCAN_DIR=/tmp/libsql-conf.d php -m | grep -i libsql
 
