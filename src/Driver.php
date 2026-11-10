@@ -51,8 +51,10 @@ final class Driver implements DbalDriverInterface
 
         $params['url'] ??= ':memory:';
 
+        $mode = $this->getConnectionMode($params);
+
         try {
-            switch ($this->getConnectionMode($params)) {
+            switch ($mode) {
                 case 'remote_replica':
                     $defaultParams = [
                         'sync_interval' => 5,
@@ -60,7 +62,7 @@ final class Driver implements DbalDriverInterface
                         'encryption_key' => '',
                     ];
 
-                    $params['url'] = 'file:'.$params['url'];
+                    $params['url'] = 'file:' . $this->resolveDatabaseUrl($params);
                     $config = array_merge($params, $defaultParams);
 
                     $databaseConfig = [
@@ -85,7 +87,7 @@ final class Driver implements DbalDriverInterface
 
                 case 'local':
                     $encryptionKey = !empty($params['encryption_key']) ? (string) $params['encryption_key'] : '';
-                    $database = 'file:'.$params['url'];
+                    $database = 'file:' . $this->resolveDatabaseUrl($params);
                     $connection = new LibSQL(
                         "libsql:dbname=$database",
                         LibSQL::OPEN_READWRITE | LibSQL::OPEN_CREATE,
@@ -118,9 +120,50 @@ final class Driver implements DbalDriverInterface
     {
         return new ExceptionConverter();
     }
-    private function getConnectionMode(array $params): string
+    /**
+     * dbal's DriverManager consumes `url` at connection-build time (DSN parse)
+     * and forwards the remaining params with `dbname` set instead. Fall back to
+     * `dbname` so embedded replicas / local files still resolve correctly —
+     * without this, every dbal user that configured `url` got a silent
+     * `:memory:` connection instead of their file.
+     */
+    private function resolveDatabaseUrl(array $params): string
     {
         $url = (string) ($params['url'] ?? '');
+
+        if ($url !== '' && $url !== ':memory:') {
+            return $this->normalizeFileUrl($url);
+        }
+
+        // Symfony/dbal feeds the file as `dbname` and injects a default
+        // `url: ':memory:'` when the user supplies no scheme — prefer the
+        // real filename over the synthesized default, otherwise every
+        // Symfony user silently loses persistence.
+        $dbname = (string) ($params['dbname'] ?? '');
+
+        if ($dbname !== '') {
+            return $this->normalizeFileUrl($dbname);
+        }
+
+        return ':memory:';
+    }
+
+    private function normalizeFileUrl(string $url): string
+    {
+        if (str_starts_with($url, 'file://')) {
+            return substr($url, 7);
+        }
+
+        if (str_starts_with($url, 'file:')) {
+            return substr($url, 5);
+        }
+
+        return $url;
+    }
+
+    private function getConnectionMode(array $params): string
+    {
+        $url = $this->resolveDatabaseUrl($params);
         $syncUrl = (string) ($params['sync_url'] ?? '');
 
         if (
