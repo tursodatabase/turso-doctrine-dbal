@@ -45,7 +45,7 @@ final class Connection implements ConnectionInterface
     {
         try {
             if ($this->isReadQuery($sql)) {
-                return Result::forRead($this->executeReadQuery($sql, []));
+                return $this->executeReadQuery($sql, []);
             }
 
             $affectedRows = $this->currentExecutor()->execute($sql);
@@ -132,7 +132,7 @@ final class Connection implements ConnectionInterface
     {
         try {
             if ($this->isReadQuery($sql)) {
-                return Result::forRead($this->executeReadQuery($sql, $parameters));
+                return $this->executeReadQuery($sql, $parameters);
             }
 
             $affectedRows = $this->currentExecutor()->execute($sql, $parameters);
@@ -148,19 +148,27 @@ final class Connection implements ConnectionInterface
         return $this->transaction ?? $this->connection;
     }
 
-    private function executeReadQuery(string $sql, array $parameters): \LibSQLResult
+    private function executeReadQuery(string $sql, array $parameters): Result
     {
         if ($this->transaction !== null) {
             $result = $this->transaction->query($sql, $parameters);
 
-            if (!$result instanceof \LibSQLResult) {
-                throw new \RuntimeException('Expected LibSQLResult for transactional read query.');
+            // The transaction surface returns the raw envelope array, never a LibSQLResult
+            if (is_array($result)) {
+                return Result::forReadEnvelope($result);
             }
 
-            return $result;
+            if ($result instanceof \LibSQLResult) {
+                return Result::forRead($result);
+            }
+
+            throw new \RuntimeException(sprintf(
+                'Unexpected transactional read query return type: %s',
+                get_debug_type($result),
+            ));
         }
 
-        return $this->connection->query($sql, $parameters);
+        return Result::forRead($this->connection->query($sql, $parameters));
     }
 
     private function isReadQuery(string $sql): bool

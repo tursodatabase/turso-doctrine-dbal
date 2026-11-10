@@ -16,15 +16,39 @@ final class Result implements ResultInterface
     /** @var list<array<string, mixed>>|null */
     private ?array $associativeRows = null;
 
+    /**
+     * @param array{columns: list<string>, rows: list<array<string, mixed>>}|null $envelope
+     */
     private function __construct(
         private readonly ?LibSQLResult $result,
         private readonly int|string $rowCount,
+        private readonly ?array $envelope = null,
     ) {
     }
 
     public static function forRead(LibSQLResult $result): self
     {
         return new self($result, 0);
+    }
+
+    /**
+     * Build a read Result from the raw envelope array returned by
+     * LibSQLTransaction::query(), which does not return a LibSQLResult:
+     *
+     *   ['columns' => ['id', ...], 'rows' => [['id' => 1, ...], ...], ...]
+     *
+     * @param array<mixed> $envelope
+     */
+    public static function forReadEnvelope(array $envelope): self
+    {
+        $rows = $envelope['rows'] ?? [];
+        $rows = is_array($rows) ? array_values($rows) : [];
+        $rows = array_map(static fn ($row) => is_array($row) ? $row : [], $rows);
+
+        $columns = $envelope['columns'] ?? [];
+        $columns = is_array($columns) ? array_values($columns) : [];
+
+        return new self(null, count($rows), ['columns' => $columns, 'rows' => $rows]);
     }
 
     public static function forWrite(int|string $rowCount): self
@@ -80,6 +104,10 @@ final class Result implements ResultInterface
 
     public function rowCount(): int|string
     {
+        if ($this->envelope !== null) {
+            return count($this->envelope['rows']);
+        }
+
         if ($this->result === null) {
             return $this->rowCount;
         }
@@ -89,11 +117,22 @@ final class Result implements ResultInterface
 
     public function columnCount(): int
     {
+        if ($this->envelope !== null) {
+            return count($this->envelope['columns']);
+        }
+
         return $this->result?->numColumns() ?? 0;
     }
 
     public function free(): void
     {
+        if ($this->envelope !== null) {
+            $this->numericRows = [];
+            $this->associativeRows = [];
+
+            return;
+        }
+
         if ($this->result !== null) {
             if (method_exists($this->result, 'finalize')) {
                 $this->result->finalize();
@@ -108,6 +147,16 @@ final class Result implements ResultInterface
 
     public function getColumnName(int $index): string
     {
+        if ($this->envelope !== null) {
+            $name = $this->envelope['columns'][$index] ?? null;
+
+            if (! is_string($name)) {
+                throw new \LogicException(sprintf('Column name at index %d is not available.', $index));
+            }
+
+            return $name;
+        }
+
         if ($this->result === null) {
             throw new \LogicException('Column names are only available for read results.');
         }
@@ -118,6 +167,10 @@ final class Result implements ResultInterface
     /** @return list<list<mixed>> */
     private function readNumericRows(): array
     {
+        if ($this->envelope !== null) {
+            return array_map('array_values', $this->envelope['rows']);
+        }
+
         if ($this->result === null) {
             return [];
         }
@@ -130,6 +183,10 @@ final class Result implements ResultInterface
     /** @return list<array<string, mixed>> */
     private function readAssociativeRows(): array
     {
+        if ($this->envelope !== null) {
+            return $this->envelope['rows'];
+        }
+
         if ($this->result === null) {
             return [];
         }
