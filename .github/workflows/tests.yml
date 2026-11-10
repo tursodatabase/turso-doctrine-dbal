@@ -50,13 +50,16 @@ jobs:
       - name: Install libSQL extension (php ${{ matrix.php }})
         run: |
           set -euo pipefail
-          mkdir -p /tmp/libsql-conf.d /tmp/libsql-ext
+          mkdir -p /tmp/libsql-ext
           url="https://github.com/tursodatabase/turso-client-php/releases/download/turso-php-extension-v1.7.0/libsql_php-turso-php-extension-v1.7.0-php-${{ matrix.php }}-nts-x86_64-unknown-linux-gnu.tar.gz"
           curl -fsSL -o /tmp/libsql-ext/libsql.tar.gz "$url"
           tar -xzf /tmp/libsql-ext/libsql.tar.gz -C /tmp/libsql-ext
           SO_PATH="$(find /tmp/libsql-ext -name 'liblibsql_php.so' -print -quit)"
-          echo "extension=${SO_PATH}" > /tmp/libsql-conf.d/70-libsql.ini
-          PHP_INI_SCAN_DIR=/tmp/libsql-conf.d php -m | grep -i libsql
+          EXT_DIR="$(php -r 'echo ini_get("extension_dir");')"
+          INI_DIR="$(php --ini | awk -F': ' '/Scan for additional .ini files in/ {print $2}')"
+          cp "$SO_PATH" "$EXT_DIR/"
+          echo 'extension=liblibsql_php.so' > "$INI_DIR/70-libsql.ini"
+          php -m | tr 'A-Z' 'a-z' | grep libsql
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
@@ -81,12 +84,9 @@ jobs:
           done
 
       - name: Example smoke
-        env:
-          PHP_INI_SCAN_DIR: /tmp/libsql-conf.d
         run: php example/index.php
 
       - name: Tests
         env:
           TURSO_SQLD_AVAILABLE: true
-          PHP_INI_SCAN_DIR: /tmp/libsql-conf.d
         run: vendor/bin/phpunit
