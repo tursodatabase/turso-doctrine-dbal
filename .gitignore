@@ -8,3 +8,4 @@ version_bump.sh
 package_versioning.php
 .idea
 .phpunit.cache/
+!docker/symfony-proof/app/.env
