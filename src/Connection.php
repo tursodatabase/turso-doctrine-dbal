@@ -128,6 +128,39 @@ final class Connection implements ConnectionInterface
         return LibSQL::version();
     }
 
+    /**
+     * Trigger a manual database sync (embedded replicas / offline-write modes).
+     * Commits pending journal operations to the remote; a no-op in online-only modes (implementation-defined by the extension).
+     */
+    public function sync(): void
+    {
+        try {
+            $this->connection->sync();
+        } catch (\Exception $e) {
+            throw Exception::new($e);
+        }
+    }
+
+    /** Whether the local replica or offline journal is currently connected to its remote. */
+    public function isOnline(): bool
+    {
+        try {
+            return (bool) $this->connection->isOnline();
+        } catch (\Exception $e) {
+            throw Exception::new($e);
+        }
+    }
+
+    /** Number of pending (not yet pushed) operations in the offline journal. */
+    public function getPendingOperationsCount(): int
+    {
+        try {
+            return (int) $this->connection->getPendingOperationsCount();
+        } catch (\Exception $e) {
+            throw Exception::new($e);
+        }
+    }
+
     public function executeStatement(string $sql, array $parameters): Result
     {
         try {

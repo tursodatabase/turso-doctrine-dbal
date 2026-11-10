@@ -51,6 +51,12 @@ final class Driver implements DbalDriverInterface
 
         $params['url'] ??= ':memory:';
 
+        // Offline-write mode flags (see docs/offline-writes). Both must be
+        // explicitly enabled; the sqld flavor additionally requires the
+        // connection to be opened with sqld_offline_mode.
+        $sqldOfflineMode = filter_var($params['sqld_offline_mode'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $offlineWrites = filter_var($params['offline_writes'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
         $mode = $this->getConnectionMode($params);
 
         try {
@@ -74,29 +80,30 @@ final class Driver implements DbalDriverInterface
                         'encryptionKey' => $config['encryption_key'],
                     ];
 
-                    $connection = new LibSQL($databaseConfig);
+                    $connection = $this->connectLibSQL($databaseConfig, $sqldOfflineMode, $offlineWrites, (string) $config['encryption_key']);
                     break;
 
                 case 'remote':
-                    $connection = new LibSQL(sprintf(
+                    $connection = $this->connectLibSQL(sprintf(
                         'libsql:dbname=%s;authToken=%s',
                         $params['sync_url'],
                         $params['auth_token'],
-                    ));
+                    ), $sqldOfflineMode, $offlineWrites, '');
                     break;
 
                 case 'local':
                     $encryptionKey = !empty($params['encryption_key']) ? (string) $params['encryption_key'] : '';
                     $database = 'file:' . $this->resolveDatabaseUrl($params);
-                    $connection = new LibSQL(
+                    $connection = $this->connectLibSQL(
                         "libsql:dbname=$database",
-                        LibSQL::OPEN_READWRITE | LibSQL::OPEN_CREATE,
+                        $sqldOfflineMode,
+                        $offlineWrites,
                         $encryptionKey,
                     );
                     break;
 
                 case 'memory':
-                    $connection = new LibSQL(':memory:');
+                    $connection = $this->connectLibSQL(':memory:', $sqldOfflineMode, $offlineWrites, '');
                     break;
 
                 default:
@@ -127,6 +134,29 @@ final class Driver implements DbalDriverInterface
      * without this, every dbal user that configured `url` got a silent
      * `:memory:` connection instead of their file.
      */
+    /**
+     * Feature-detected LibSQL constructor wiring — mirrors what the Laravel
+     * adapter does for the same extension API. The extension gained the
+     * offline flags in 1.7.0; older payloads keep working with 1-arg/4-arg
+     * fallbacks.
+     */
+    private function connectLibSQL(string|array $config, bool $sqldOfflineMode, bool $offlineWrites, string $encryptionKey): LibSQL
+    {
+        static $paramCount = null;
+
+        if ($paramCount === null) {
+            $paramCount = (new \ReflectionClass(LibSQL::class))
+                ->getMethod('__construct')
+                ->getNumberOfParameters();
+        }
+
+        return match (true) {
+            $paramCount >= 5 => new LibSQL($config, $sqldOfflineMode, LibSQL::OPEN_READWRITE | LibSQL::OPEN_CREATE, $encryptionKey, $offlineWrites),
+            $paramCount === 4 => new LibSQL($config, LibSQL::OPEN_READWRITE | LibSQL::OPEN_CREATE, $encryptionKey, $offlineWrites),
+            default => new LibSQL($config),
+        };
+    }
+
     private function resolveDatabaseUrl(array $params): string
     {
         $url = (string) ($params['url'] ?? '');
