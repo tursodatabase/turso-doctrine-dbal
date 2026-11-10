@@ -5,29 +5,69 @@ declare(strict_types=1);
 namespace Turso\Doctrine\DBAL;
 
 use Doctrine\DBAL\Driver\Result as ResultInterface;
-use Doctrine\DBAL\Exception\NoKeyValue;
 use LibSQL;
 use LibSQLResult;
 
 final class Result implements ResultInterface
 {
-    private LibSQLResult $result;
+    /** @var list<list<mixed>>|null */
+    private ?array $numericRows = null;
 
-    public function __construct(
-        LibSQLResult $result,
-        private readonly bool $isStandAlone
+    /** @var list<array<string, mixed>>|null */
+    private ?array $associativeRows = null;
+
+    /**
+     * @param array{columns: list<string>, rows: list<array<string, mixed>>}|null $envelope
+     */
+    private function __construct(
+        private readonly ?LibSQLResult $result,
+        private readonly int|string $rowCount,
+        private readonly ?array $envelope = null,
     ) {
-        $this->result = $result;
+    }
+
+    public static function forRead(LibSQLResult $result): self
+    {
+        return new self($result, 0);
+    }
+
+    /**
+     * Build a read Result from the raw envelope array returned by
+     * LibSQLTransaction::query(), which does not return a LibSQLResult:
+     *
+     *   ['columns' => ['id', ...], 'rows' => [['id' => 1, ...], ...], ...]
+     *
+     * @param array<mixed> $envelope
+     */
+    public static function forReadEnvelope(array $envelope): self
+    {
+        $rows = $envelope['rows'] ?? [];
+        $rows = is_array($rows) ? array_values($rows) : [];
+        $rows = array_map(static fn ($row) => is_array($row) ? $row : [], $rows);
+
+        $columns = $envelope['columns'] ?? [];
+        $columns = is_array($columns) ? array_values($columns) : [];
+
+        return new self(null, count($rows), ['columns' => $columns, 'rows' => $rows]);
+    }
+
+    public static function forWrite(int|string $rowCount): self
+    {
+        return new self(null, $rowCount);
     }
 
     public function fetchNumeric(): array|false
     {
-        return current($this->result->fetchArray(LibSQL::LIBSQL_NUM));
+        $this->numericRows ??= $this->readNumericRows();
+
+        return array_shift($this->numericRows) ?: false;
     }
 
     public function fetchAssociative(): array|false
     {
-        return current($this->result->fetchArray(LibSQL::LIBSQL_ASSOC));
+        $this->associativeRows ??= $this->readAssociativeRows();
+
+        return array_shift($this->associativeRows) ?: false;
     }
 
     public function fetchOne(): mixed
@@ -43,80 +83,116 @@ final class Result implements ResultInterface
 
     public function fetchAllNumeric(): array
     {
-        if ($this->fetchNumeric() === false) {
-            return [];
-        }
+        $rows = $this->numericRows ??= $this->readNumericRows();
+        $this->numericRows = [];
 
-        return array_map(function ($row) {
-            return $row;
-        }, $this->fetchNumeric());
+        return $rows;
     }
 
     public function fetchAllAssociative(): array
     {
-        if ($this->result->fetchArray(LibSQL::LIBSQL_ASSOC) === false) {
-            return [];
-        }
+        $rows = $this->associativeRows ??= $this->readAssociativeRows();
+        $this->associativeRows = [];
 
-        return array_map(function ($row) {
-            return $row;
-        }, $this->result->fetchArray(LibSQL::LIBSQL_ASSOC));
-    }
-
-    public function fetchAllKeyValue(): array
-    {
-        $this->ensureHasKeyValue();
-
-        $data = [];
-
-        foreach ($this->fetchAllNumeric() as $row) {
-            assert(count($row) >= 2);
-            [$key, $value] = $row;
-            $data[$key]    = $value;
-        }
-
-        return $data;
-    }
-
-    public function fetchAllAssociativeIndexed(): array
-    {
-        $data = [];
-
-        foreach ($this->fetchAllAssociative() as $row) {
-            $data[array_shift($row)] = $row;
-        }
-
-        return $data;
+        return $rows;
     }
 
     public function fetchFirstColumn(): array
     {
-        return array_map(function ($row) {
-            return $row;
-        }, $this->fetchOne());
+        return array_column($this->fetchAllNumeric(), 0);
     }
 
-    public function rowCount(): int
+    public function rowCount(): int|string
     {
-        return count($this->result->fetchArray(LibSQL::LIBSQL_NUM));
+        if ($this->envelope !== null) {
+            return count($this->envelope['rows']);
+        }
+
+        if ($this->result === null) {
+            return $this->rowCount;
+        }
+
+        return count($this->numericRows ??= $this->readNumericRows());
     }
 
     public function columnCount(): int
     {
-        return $this->result->numColumns();
+        if ($this->envelope !== null) {
+            return count($this->envelope['columns']);
+        }
+
+        return $this->result?->numColumns() ?? 0;
     }
 
     public function free(): void
     {
-        $this->result->reset();
+        if ($this->envelope !== null) {
+            $this->numericRows = [];
+            $this->associativeRows = [];
+
+            return;
+        }
+
+        if ($this->result !== null) {
+            if (method_exists($this->result, 'finalize')) {
+                $this->result->finalize();
+            } elseif (method_exists($this->result, 'reset')) {
+                $this->result->reset();
+            }
+        }
+
+        $this->numericRows = [];
+        $this->associativeRows = [];
     }
 
-    private function ensureHasKeyValue(): void
+    public function getColumnName(int $index): string
     {
-        $columnCount = $this->columnCount();
+        if ($this->envelope !== null) {
+            $name = $this->envelope['columns'][$index] ?? null;
 
-        if ($columnCount < 2) {
-            throw NoKeyValue::fromColumnCount($columnCount);
+            if (! is_string($name)) {
+                throw new \LogicException(sprintf('Column name at index %d is not available.', $index));
+            }
+
+            return $name;
         }
+
+        if ($this->result === null) {
+            throw new \LogicException('Column names are only available for read results.');
+        }
+
+        return $this->result->columnName($index);
+    }
+
+    /** @return list<list<mixed>> */
+    private function readNumericRows(): array
+    {
+        if ($this->envelope !== null) {
+            return array_map('array_values', $this->envelope['rows']);
+        }
+
+        if ($this->result === null) {
+            return [];
+        }
+
+        $rows = $this->result->fetchArray(LibSQL::LIBSQL_NUM);
+
+        return is_array($rows) ? array_values($rows) : [];
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function readAssociativeRows(): array
+    {
+        if ($this->envelope !== null) {
+            return $this->envelope['rows'];
+        }
+
+        if ($this->result === null) {
+            return [];
+        }
+
+        $rows = $this->result->fetchArray(LibSQL::LIBSQL_ASSOC);
+
+        return is_array($rows) ? array_values($rows) : [];
     }
 }
