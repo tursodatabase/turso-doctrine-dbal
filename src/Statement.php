@@ -20,6 +20,12 @@ final class Statement implements StatementInterface
 
     public function bindValue(int|string $param, mixed $value, ParameterType $type): void
     {
+        if ($type === ParameterType::BINARY && is_string($value)) {
+            // The extension has no typed blob parameter binding — transport
+            // binaries as an explicit marker cell instead of binding as text.
+            $value = BlobCodec::encode($value);
+        }
+
         if (is_int($param)) {
             $this->parameters[$param - 1] = $value;
 

@@ -7,6 +7,7 @@ namespace Turso\Doctrine\DBAL\Tests\Feature;
 use Doctrine\DBAL\Connection;
 use Composer\InstalledVersions;
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\ParameterType;
 use PHPUnit\Framework\TestCase;
 use Turso\Doctrine\DBAL\Driver;
 
@@ -140,8 +141,50 @@ final class SmokeTest extends TestCase
         $this->assertSame('name', $stmt->getColumnName(1));
     }
 
-    public function testRawBinaryBindingCurrentlyBindsAsNull(): void
+    public function testBinaryRoundTrip(): void
     {
-        $this->markTestSkipped('documents issue #3 — raw binary parameters bind as NULL in the extension; see https://github.com/tursodatabase/turso-doctrine-dbal/issues/3');
+        $conn = $this->conn();
+        $conn->executeStatement('CREATE TABLE blobs (id INTEGER PRIMARY KEY, data BLOB)');
+
+        $binary = random_bytes(64);
+        $count = $conn->executeStatement('INSERT INTO blobs (data) VALUES (?)', [$binary], [ParameterType::BINARY]);
+        $this->assertSame(1, $count);
+
+        $back = $conn->executeQuery('SELECT data FROM blobs')->fetchOne();
+        $this->assertSame($binary, $back);
+    }
+
+    public function testBinaryWhereClauseRoundTrip(): void
+    {
+        $conn = $this->conn();
+        $conn->executeStatement('CREATE TABLE blobs (id INTEGER PRIMARY KEY, data BLOB)');
+
+        $binary = random_bytes(32);
+        $conn->executeStatement('INSERT INTO blobs (data) VALUES (?)', [$binary], [ParameterType::BINARY]);
+
+        $count = $conn->executeQuery('SELECT count(*) FROM blobs WHERE data = ?', [$binary], [ParameterType::BINARY])->fetchOne();
+        $this->assertSame(1, $count);
+    }
+
+    public function testAlphabeticStringCellIsNotDoubleDecoded(): void
+    {
+        $conn = $this->conn();
+        $conn->executeStatement('CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)');
+
+        $conn->executeStatement('INSERT INTO t (name) VALUES (?)', ['hhv2jzxj']);
+        $conn->executeStatement('INSERT INTO t (name) VALUES (?)', ['database']);
+
+        $this->assertSame(['hhv2jzxj', 'database'], $conn->executeQuery('SELECT name FROM t ORDER BY id')->fetchFirstColumn());
+    }
+
+    public function testPlainStringWithNonAsciiSurvives(): void
+    {
+        $conn = $this->conn();
+        $conn->executeStatement('CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)');
+
+        $text = 'café – naïve — 日本語';
+        $conn->executeStatement('INSERT INTO t (name) VALUES (?)', [$text]);
+
+        $this->assertSame($text, $conn->executeQuery('SELECT name FROM t')->fetchOne());
     }
 }

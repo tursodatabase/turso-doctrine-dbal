@@ -168,7 +168,7 @@ final class Result implements ResultInterface
     private function readNumericRows(): array
     {
         if ($this->envelope !== null) {
-            return array_map('array_values', $this->envelope['rows']);
+            return array_map('array_values', BlobCodec::decodeRows($this->envelope['rows']));
         }
 
         if ($this->result === null) {
@@ -177,14 +177,14 @@ final class Result implements ResultInterface
 
         $rows = $this->result->fetchArray(LibSQL::LIBSQL_NUM);
 
-        return is_array($rows) ? array_values($rows) : [];
+        return is_array($rows) ? array_map('array_values', BlobCodec::decodeRows(array_values($rows))) : [];
     }
 
     /** @return list<array<string, mixed>> */
     private function readAssociativeRows(): array
     {
         if ($this->envelope !== null) {
-            return $this->envelope['rows'];
+            return BlobCodec::decodeRows($this->envelope['rows']);
         }
 
         if ($this->result === null) {
@@ -193,6 +193,6 @@ final class Result implements ResultInterface
 
         $rows = $this->result->fetchArray(LibSQL::LIBSQL_ASSOC);
 
-        return is_array($rows) ? array_values($rows) : [];
+        return is_array($rows) ? array_values(BlobCodec::decodeRows(array_values($rows))) : [];
     }
 }

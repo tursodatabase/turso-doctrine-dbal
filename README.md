@@ -212,10 +212,10 @@ See [`example/index.php`](example/index.php) for a runnable smoke application
 
 Explicitly not hidden (all tracked as issues):
 
-- **Binary/BLOB parameters bind as NULL** — binding raw binary strings
-  (`ParameterType::BINARY`) stores NULL instead of the bytes (extension
-  limitation). Workaround: base64-encode payloads or use `x'<hex>'` literals.
-  See [issue #3](https://github.com/tursodatabase/turso-doctrine-dbal/issues/3).
+- **Binary parameters** — `ParameterType::BINARY` now round-trips through a
+  `libsqlblob:` marker (see CHANGELOG); arbitrary bytes persist correctly.
+  Invalid-UTF-8 strings bound as `ParameterType::STRING` still bind as NULL
+  (extension limitation) — always bind binary payloads with `BINARY`.
 - **No nested transactions or savepoints** — the extension does not expose
   savepoints; nested `beginTransaction()` calls are not supported
 - **No offline-write mode** — `sqld_offline_write` / `offline_writes`
