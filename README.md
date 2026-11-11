@@ -38,6 +38,11 @@
   exercise migrations, ORM round trips and transactions end to end.
 </p>
 
+<p align="center">
+  Full user manual & tutorial now lives on the
+  <a href="https://github.com/tursodatabase/turso-doctrine-dbal/wiki">Wiki</a>.
+</p>
+
 ---
 
 ## Requirements
@@ -47,9 +52,7 @@
 | PHP | 8.2, 8.3, 8.4 or 8.5 |
 | doctrine/dbal | `^4.0` — CI tests 4.0.2, 4.5.1 and 5.0.x-dev |
 | libSQL PHP extension | `1.7.0` or later |
-| Turso credentials (remote/replica modes) | token + sync URL — see below |
-
-> `Doctrine\DBAL\Result::getColumnName()` (used by schema introspection) requires dbal **4.1.0+**.
+| Turso credentials (remote/replica modes) | token + sync URL — see the Wiki |
 
 ## Installation
 
@@ -68,11 +71,7 @@ php artisan turso-php:install
 
 **Any stack** — download the tarball for your platform from
 [turso-client-php releases](https://github.com/tursodatabase/turso-client-php/releases),
-then enable it in `php.ini`:
-
-```ini
-extension=liblibsql_php.so     ; Linux (.dll on Windows)
-```
+then enable it in `php.ini` (`extension=liblibsql_php.so`).
 
 Verify:
 
@@ -82,8 +81,6 @@ php -r 'echo LibSQL::version(), PHP_EOL;'
 ```
 
 ## Configuration
-
-Connection parameters feed straight into Doctrine's `DriverManager::getConnection([...])`:
 
 ```php
 <?php
@@ -96,33 +93,33 @@ $params = [
     'driverClass' => Driver::class,
 ];
 
-// Local file
+// Local file:
 // $params = ['url' => 'database.sqlite', 'driverClass' => Driver::class];
 
-// Remote (Turso Cloud)
+// Remote (Turso Cloud):
 // $params = [
-//     'url' => ':memory:',              // or a local filename for embedded replica
+//     'url' => ':memory:',
 //     'auth_token' => $_ENV['TURSO_AUTH_TOKEN'],
 //     'sync_url' => $_ENV['TURSO_SYNC_URL'],
 //     'driverClass' => Driver::class,
 // ];
 
-// Remote replica (embedded replica)
+// Remote replica (embedded replica):
 // $params = [
-//     'url' => 'database.sqlite',       // local replica file
+//     'url' => 'database.sqlite',
 //     'auth_token' => $_ENV['TURSO_AUTH_TOKEN'],
 //     'sync_url' => $_ENV['TURSO_SYNC_URL'],
 //     'sync_interval' => 5,             // optional, default 5 (seconds)
-//     'read_your_writes' => true,        // optional, default true
+//     'read_your_writes' => true,
 //     'driverClass' => Driver::class,
 // ];
 
 $conn = DriverManager::getConnection($params);
 ```
 
-Get credentials with `turso db show --url <db-name>` and
-`turso db tokens create <db-name>`, or from the
-[Turso dashboard](https://dashboard.turso.io). Never commit tokens — read them from the environment.
+All options (defaults, connection-mode selection, Symfony bundle recipe,
+`DATABASE_URL` handling, `getColumnName()` dbal 4.1 caveat) are documented on
+the [Wiki · Configuration](https://github.com/tursodatabase/turso-doctrine-dbal/wiki/Configuration).
 
 ## Connection types
 
@@ -133,120 +130,48 @@ Get credentials with `turso db show --url <db-name>` and
 | `sync_url` without a local file | `remote` |
 | everything else | `:memory:` |
 
-> Writing `sqlite://path/to.db` is **not** required and won't behave as a file URL.
-> Use a plain filename — the driver checks for `.db`/`.sqlite` substrings.
-> On Symfony, put a plain filename in `DATABASE_URL` (not a `sqlite://` DSN) and set `driver_class` in the bundle config; since 1.3.1 the driver falls back to `dbname` automatically.
+Worked examples for every mode: [Wiki · Connection Types](https://github.com/tursodatabase/turso-doctrine-dbal/wiki/Connection-Types).
 
 ## Usage
 
-Standard Doctrine DBAL APIs — Query Builder SQL, ORM, migrations, transactions,
-streaming fetch iteration — work through the native driver:
+Standard DBAL APIs — `executeStatement`, `executeQuery`, transactions,
+streaming fetch iteration, schema introspection — work through the native driver.
 
-```php
-$conn = DriverManager::getConnection([
-    'url' => ':memory:',
-    'driverClass' => \Turso\Doctrine\DBAL\Driver::class,
-]);
+Transactions: `beginTransaction()` / `commit()` / `rollBack()`.
+Streaming: iterate `$stmt->fetchAssociative()` in a `while` loop.
+Named parameters use `:name`, positional are numbered from 1.
+Writes **throw** instead of returning `false`.
 
-$conn->executeStatement('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, age INTEGER)');
-$conn->executeStatement('INSERT INTO users (name, age) VALUES (?, ?)', ['Budi Dalton', 49]);
-
-$rows = $conn->executeQuery('SELECT * FROM users ORDER BY id')->fetchAllAssociative();
-print_r($rows);
-```
-
-Transactions: `beginTransaction()` / `commit()` / `rollBack()`; streaming:
-iterate `$stmt->fetchAssociative()` in a `while` loop; positional params are
-numbered from 1; named params use `:name`; writes **throw** instead of
-returning `false`; `lastInsertId()` returns a numeric string.
-
-For a full working tour — fresh Symfony app, ORM round trip, transaction
-rollback/commit, `doctrine:migrations:migrate` through the driver — see the
-[Symfony proof harness](docker/symfony-proof/) and
-[example/index.php](example/index.php).
-
-## Documentation
-
-- [CHANGELOG](CHANGELOG.md) — what changed, including the 1.3.1 Symfony
-  persistence fix, binary support in 1.4.0, and the DBAL 4 compliance rework
-- [Symfony proof harness](docker/symfony-proof/README.md) — how to reproduce
-  every claim on this page from a clean checkout
-- [Turso Cloud proof harness](docker/cloud-proof/README.md) — same for the
-  Turso Cloud offline-writes flavor against a live cloud database
-- [Turso documentation](https://docs.turso.tech/sdk/php/orm/doctrine-dbal) —
-  official quickstart, examples and API reference for this package
-- [turso-client-php](https://github.com/tursodatabase/turso-client-php) — the
-  libSQL PHP extension source of truth
-- [open issues](https://github.com/tursodatabase/turso-doctrine-dbal/issues) —
-  known limitations are tracked in the open
+Full tour: [Wiki · Basic Usage](https://github.com/tursodatabase/turso-doctrine-dbal/wiki/Basic-Usage).
 
 ## Offline-write modes
 
-libSQL can apply writes to a local journal and push them to the server later —
-either journaling through a local embedded replica to Turso Cloud (**journaled
-flavor**), or against a self-hosted `sqld` (**sqld flavor**). Both need the
-libSQL extension ≥ 1.7.0 and are wired through two connection flags
-(`sqld_offline_mode` and `offline_writes`), mirroring the Laravel driver.
+Two opt-in flavors (both need extension ≥ 1.7.0):
 
-### Turso Cloud flavor
+| Driver params | Value | Flavor |
+|---|---|---|
+| `offline_writes` | `true` | Turso Cloud (beta) — journaled push to the cloud |
+| `sqld_offline_mode` + `offline_writes` | both `true` | Self-hosted sqld — journal + `sync()` drain |
 
-Embedded replica against Turso Cloud, journaled writes, manual `sync()` to push:
+Full guide with verified output: [Wiki · Offline Writes](https://github.com/tursodatabase/turso-doctrine-dbal/wiki/Offline-Writes).
 
-```php
-$params = [
-    'url' => 'database.sqlite',          // local replica file
-    'auth_token' => $_ENV['TURSO_AUTH_TOKEN'],
-    'sync_url' => $_ENV['TURSO_SYNC_URL'],
-    'sync_interval' => 0,                // required for offline mode — manual sync only
-    'read_your_writes' => true,
-    'driverClass' => \Turso\Doctrine\DBAL\Driver::class,
-    'offline_writes' => true,            // sqld_offline_mode stays false
-];
-```
+## Documentation
 
-Writes go to the local file until `sync()` pushes them. The server never sees
-unsynced writes — verified against a live Turso Cloud database
-(`TURSO_CLOUD_DB_URL` / `TURSO_CLOUD_DB_TOKEN`-gated proof in
-[`tests/Feature/TursoCloudOfflineWriteTest.php`](tests/Feature/TursoCloudOfflineWriteTest.php)).
+The full user manual & tutorial lives on the **[Wiki](https://github.com/tursodatabase/turso-doctrine-dbal/wiki)**:
 
-### Self-hosted sqld flavor
+- [Installation](https://github.com/tursodatabase/turso-doctrine-dbal/wiki/Installation)
+- [Configuration](https://github.com/tursodatabase/turso-doctrine-dbal/wiki/Configuration)
+- [Connection Types](https://github.com/tursodatabase/turso-doctrine-dbal/wiki/Connection-Types)
+- [Basic Usage](https://github.com/tursodatabase/turso-doctrine-dbal/wiki/Basic-Usage)
+- [Offline Writes (two flavors)](https://github.com/tursodatabase/turso-doctrine-dbal/wiki/Offline-Writes)
+- [Verification & Proof Harness](https://github.com/tursodatabase/turso-doctrine-dbal/wiki/Verification)
+- [Known Limitations](https://github.com/tursodatabase/turso-doctrine-dbal/wiki/Known-Limitations)
+- [Troubleshooting](https://github.com/tursodatabase/turso-doctrine-dbal/wiki/Troubleshooting)
 
-An embedded replica journaled against a local `sqld`, or against a `sqld`
-server you run yourself:
+Official quickstart/API reference for this package is at
+[docs.turso.tech/sdk/php/orm/doctrine-dbal](https://docs.turso.tech/sdk/php/orm/doctrine-dbal).
 
-```php
-$params = [
-    'url' => 'database.sqlite',
-    'auth_token' => $_ENV['TURSO_AUTH_TOKEN'],
-    'sync_url' => 'http://127.0.0.1:8080',
-    'sync_interval' => 0,
-    'read_your_writes' => true,
-    'driverClass' => \Turso\Doctrine\DBAL\Driver::class,
-    'sqld_offline_mode' => true,
-    'offline_writes' => true,
-];
-```
-
-Writes journal locally; `sync()` drains the journal to the server. Pending
-operations and connectivity are inspectable:
-
-```php
-$conn->getNativeConnection()->isOnline();                  // bool
-$conn->getNativeConnection()->getPendingOperationsCount(); // int
-$conn->getNativeConnection()->sync();                      // push journaled rows
-```
-
-Writes against a reachable server go straight through; with the server
-unreachable, they journal locally until the next `sync()`.
-
-**Bootstrap requirement (Turso Cloud):** call `sync()` once on a fresh replica
-file **before** any write — otherwise the push fails with a frame conflict.
-
-Both flavors are covered by env-gated tests:
-
-- `OfflineWriteTest` (sqld): outage → journal → reconnect → drain cycle
-- `TursoCloudOfflineWriteTest` (cloud): journaled writes pushed via `sync()`
-  and verified server-side, cleanup verified
+Links for the verification story: [docker/symfony-proof](docker/symfony-proof/) (10-assert proof), [docker/cloud-proof](docker/cloud-proof/) (cloud flavor), [CHANGELOG](CHANGELOG.md) and the test suite (`./vendor/bin/phpunit`).
 
 ## Testing
 
@@ -255,10 +180,8 @@ composer install
 ./vendor/bin/phpunit
 ```
 
-Server-dependent tests are skipped by default. Remote/replica tests need a
-seeded `sqld` on `8081`/`8082` and run under `TURSO_SQLD_AVAILABLE=true`
-(seeded in CI). The Turso Cloud flavor is skipped separately and never touches
-the cloud unless `TURSO_CLOUD_DB_URL` / `TURSO_CLOUD_DB_TOKEN` are set.
+Server-dependent tests are skipped by default. The Turso Cloud flavor is
+env-gated. See [Wiki · Verification](https://github.com/tursodatabase/turso-doctrine-dbal/wiki/Verification).
 
 ## Changelog
 
@@ -268,7 +191,7 @@ recently.
 ## Contributing
 
 Please see [open issues](https://github.com/tursodatabase/turso-doctrine-dbal/issues)
-and the proof harness. Changes should pass CI and the Symfony proof with tests
+and the proof harnesses. Changes should pass CI and the Symfony proof with tests
 for any behavior change. The house style is: prove it first, then document it.
 
 ## Security Vulnerabilities
