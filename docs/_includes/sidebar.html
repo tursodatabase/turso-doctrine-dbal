@@ -1,0 +1,24 @@
+{% assign current = page.url %}
+<aside class="sidebar" data-sidebar>
+    <nav class="sidebar__nav" aria-label="User manual">
+        {% assign sections = "Introduction,Guide,Operations,Reference" | split: "," %}
+        {% for section in sections %}
+        <div class="sidebar__section">
+            <p class="sidebar__heading">{{ section }}</p>
+            <ul class="sidebar__list">
+                {% for item in site.data.nav %}
+                    {% if item.section == section %}
+                    <li>
+                        <a class="sidebar__link" href="{{ item.url | relative_url }}" {% if current == item.url %}aria-current="page"{% endif %}>{{ item.title }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+        <div class="sidebar__cta">
+            <p>Need the source or a release?</p>
+            <a href="https://github.com/tursodatabase/turso-doctrine-dbal">Repository on GitHub →</a>
+        </div>
+    </nav>
+</aside>

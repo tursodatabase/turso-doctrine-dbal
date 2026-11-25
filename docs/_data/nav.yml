@@ -1,0 +1,33 @@
+- title: Overview
+  url: /user-manual/
+  section: Introduction
+- title: Getting started
+  url: /user-manual/getting-started/
+  section: Introduction
+- title: Configuration
+  url: /user-manual/configuration/
+  section: Guide
+- title: Connection modes
+  url: /user-manual/connection-modes/
+  section: Guide
+- title: Basic usage
+  url: /user-manual/basic-usage/
+  section: Guide
+- title: Transactions and reads
+  url: /user-manual/transactions-and-reads/
+  section: Guide
+- title: Offline writes
+  url: /user-manual/offline-writes/
+  section: Guide
+- title: Verification and proof
+  url: /user-manual/verification/
+  section: Operations
+- title: Known limitations
+  url: /user-manual/known-limitations/
+  section: Reference
+- title: Troubleshooting
+  url: /user-manual/troubleshooting/
+  section: Reference
+- title: API reference
+  url: /user-manual/reference/api/
+  section: Reference
