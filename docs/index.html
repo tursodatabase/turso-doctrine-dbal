@@ -1,0 +1,227 @@
+---
+---
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-baseurl="{{ site.baseurl }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turso Doctrine DBAL — Doctrine DBAL driver for libSQL and Turso</title>
+    <meta name="description" content="A Doctrine DBAL 4 driver for libSQL/Turso built on the native libSQL PHP extension. Local, remote, embedded replica, and offline-write modes with standard DBAL APIs.">
+    <meta name="theme-color" content="#0f1617" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f7fbfb" media="(prefers-color-scheme: light)">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Turso Doctrine DBAL">
+    <meta property="og:title" content="Turso Doctrine DBAL — Doctrine DBAL driver for libSQL and Turso">
+    <meta property="og:description" content="Use Doctrine DBAL with libSQL/Turso through the native PHP extension.">
+    <link rel="icon" href="{{ site.baseurl }}/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="shortcut icon" href="{{ site.baseurl }}/favicon.ico">
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/css/landing.css">
+    <script>
+        (function () {
+            var saved;
+            try { saved = localStorage.getItem('docs-theme'); } catch (e) { saved = null; }
+            var theme = saved === 'light' || saved === 'dark'
+                ? saved
+                : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+        <div class="container header-inner">
+            <a class="brand" href="{{ site.baseurl }}/" aria-label="Turso Doctrine DBAL home">
+                <span class="brand__mark"><img src="{{ site.baseurl }}/images/turso-doctrine-dbal-logo.png" alt="" width="30" height="30"></span>
+                <span>Turso Doctrine DBAL</span>
+                <span class="brand__tag">DBAL 4+</span>
+            </a>
+            <nav class="main-nav" aria-label="Primary">
+                <a href="#capabilities">Capabilities</a>
+                <a href="#modes">Connection modes</a>
+                <a href="#install">Install</a>
+                <a href="{{ site.baseurl }}/user-manual/">User manual</a>
+                <a href="https://github.com/tursodatabase/turso-doctrine-dbal" target="_blank" rel="noopener">GitHub</a>
+            </nav>
+            <div class="header-actions">
+                <a class="star-pill" href="https://github.com/tursodatabase/turso-doctrine-dbal/stargazers" target="_blank" rel="noopener" aria-label="GitHub stars">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <span id="header-stars">—</span>
+                </a>
+                <button class="icon-button" id="theme-toggle" aria-label="Switch to light theme">
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41"/></svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>
+                </button>
+                <button class="icon-button nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-panel">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="mobile-panel" id="mobile-panel">
+            <nav aria-label="Mobile">
+                <a href="#capabilities">Capabilities</a>
+                <a href="#modes">Connection modes</a>
+                <a href="#install">Install</a>
+                <a href="{{ site.baseurl }}/user-manual/">User manual</a>
+                <a href="https://github.com/tursodatabase/turso-doctrine-dbal">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main">
+        <section class="hero">
+            <img class="hero__watermark" src="{{ site.baseurl }}/images/turso-doctrine-dbal-logo.png" alt="" aria-hidden="true">
+            <div class="container hero-grid">
+                <div>
+                    <p class="eyebrow">libSQL · Doctrine DBAL · Turso</p>
+                    <h1>Doctrine DBAL, powered by <em>libSQL</em>.</h1>
+                    <p class="hero__sub">A Doctrine DBAL 4 driver for libSQL/Turso built on the native PHP extension. Use familiar DBAL APIs for local files, remote Turso databases, embedded replicas, and offline-write workflows.</p>
+                    <div class="hero__actions">
+                        <a class="btn btn--primary" href="{{ site.baseurl }}/user-manual/getting-started/">Get started</a>
+                        <a class="btn btn--ghost" href="{{ site.baseurl }}/user-manual/">Read the manual</a>
+                        <a class="btn btn--ghost" href="https://github.com/tursodatabase/turso-doctrine-dbal" target="_blank" rel="noopener">View source</a>
+                    </div>
+                    <ul class="hero__proof" aria-label="Highlights">
+                        <li>Doctrine DBAL 4</li>
+                        <li>PHP 8.2+</li>
+                        <li>Local/Remote/Replica</li>
+                        <li>Offline writes</li>
+                    </ul>
+                </div>
+                <div class="shot-frame" aria-label="Doctrine DBAL example">
+                    <div class="shot-frame__bar"><span class="shot-frame__dot"></span><span class="shot-frame__dot"></span><span class="shot-frame__dot"></span><span class="shot-frame__title">bootstrap.php</span></div>
+<pre><code><span class="t-kw">use</span> <span class="t-fn">Doctrine\DBAL\DriverManager</span>;
+<span class="t-kw">use</span> <span class="t-fn">Turso\Doctrine\DBAL\Driver</span>;
+
+<span class="t-p">$</span>conn = DriverManager::<span class="t-fn">getConnection</span>([
+    <span class="t-str">'url'</span> => <span class="t-str">'database.sqlite'</span>,
+    <span class="t-str">'driverClass'</span> => Driver::<span class="t-kw">class</span>,
+]);
+
+<span class="t-p">$</span>conn-><span class="t-fn">executeStatement</span>(
+    <span class="t-str">'INSERT INTO users (name) VALUES (?)'</span>,
+    [<span class="t-str">'Ada'</span>]
+);</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <section class="stat-strip" aria-label="Project facts">
+            <div class="container stat-strip__inner">
+                <div class="stat"><span class="stat__value">4</span><span class="stat__label">Connection modes</span></div>
+                <div class="stat"><span class="stat__value">DBAL 4</span><span class="stat__label">Doctrine contract</span></div>
+                <div class="stat"><span class="stat__value" id="release-tag">v1.x</span><span class="stat__label">Latest release</span></div>
+                <div class="stat"><span class="stat__value" id="stars">—</span><span class="stat__label">GitHub stars</span></div>
+            </div>
+        </section>
+
+        <section class="section" id="capabilities">
+            <div class="container">
+                <div class="section__head">
+                    <p class="eyebrow">Why this driver</p>
+                    <h2>Standard DBAL, Turso-native transport.</h2>
+                    <p>Keep using Doctrine DBAL APIs while the driver handles libSQL connection modes, transactions, result iteration, and binary transport quirks.</p>
+                </div>
+                <div class="pillar-grid">
+                    <article class="pillar">
+                        <div class="pillar__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+                        <h3>Familiar DBAL API</h3>
+                        <p>Use <code>executeStatement</code>, <code>executeQuery</code>, transactions, schema tools, and parameter binding through Doctrine DBAL.</p>
+                    </article>
+                    <article class="pillar">
+                        <div class="pillar__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v5c0 5-3 7.5-7 10-4-2.5-7-5-7-10V6l7-3z"/></svg></div>
+                        <h3>Multiple connection modes</h3>
+                        <p>Run in-memory, local file, remote Turso, or embedded replica mode. Enable offline writes for sqld or Turso Cloud flavors.</p>
+                    </article>
+                    <article class="pillar">
+                        <div class="pillar__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 20h10M8 9h8M8 13h5"/></svg></div>
+                        <h3>Proof-first behavior</h3>
+                        <p>Test suite and Docker proof harnesses verify real DBAL flows, migrations, transactions, and offline-write behavior.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section section--alt" id="modes">
+            <div class="container">
+                <div class="section__head">
+                    <p class="eyebrow">Connection modes</p>
+                    <h2>Pick the right libSQL shape.</h2>
+                    <p>The driver selects a connection mode from <code>url</code>, <code>sync_url</code>, and auth options. You can move from local dev to remote or replica without changing your DBAL code style.</p>
+                </div>
+                <div class="surface-grid">
+                    <article class="surface-card"><h3>Memory</h3><p>Fast ephemeral database for tests and local scripts. <code>url: ':memory:'</code>.</p></article>
+                    <article class="surface-card"><h3>Local file</h3><p>SQLite/libSQL file on disk. Use <code>.db</code> or <code>.sqlite</code> path.</p></article>
+                    <article class="surface-card"><h3>Remote</h3><p>Connect directly to Turso/libSQL over HTTP with <code>sync_url</code> and <code>auth_token</code>.</p></article>
+                    <article class="surface-card"><h3>Embedded replica</h3><p>Local file synced with remote primary. Supports <code>sync_interval</code> and read-your-writes.</p></article>
+                    <article class="surface-card"><h3>sqld offline writes</h3><p>Journal writes locally with <code>sqld_offline_mode</code> + <code>offline_writes</code>, then sync.</p></article>
+                    <article class="surface-card"><h3>Turso Cloud offline writes</h3><p>Journaled writes against Turso Cloud with <code>offline_writes</code> and embedded replica bootstrap sync.</p></article>
+                    <article class="surface-card"><h3>Transactions</h3><p>DBAL transactions map to libSQL transaction handles with read/write behavior inside tx.</p></article>
+                    <article class="surface-card"><h3>Binary transport</h3><p>Binary parameters round-trip through <code>BlobCodec</code> marker transport to avoid extension text-binding limits.</p></article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" id="install">
+            <div class="container install-grid">
+                <div>
+                    <div class="section__head" style="margin-bottom:24px;">
+                        <p class="eyebrow">Install</p>
+                        <h2>Install package, load extension, connect.</h2>
+                        <p>Install the Composer package, enable the libSQL PHP extension, and pass <code>Turso\Doctrine\DBAL\Driver</code> as <code>driverClass</code>.</p>
+                    </div>
+                    <ol class="steps">
+                        <li class="step"><span class="step__num">1</span><div><h3>Install Composer package</h3><p>Require <code>tursodatabase/turso-doctrine-dbal</code> in a PHP 8.2+ project with Doctrine DBAL 4.</p></div></li>
+                        <li class="step"><span class="step__num">2</span><div><h3>Install libSQL extension</h3><p>Install <code>libsql_php</code> from turso-client-php releases or Laravel installer, then verify with <code>php -m | grep libsql</code>.</p></div></li>
+                        <li class="step"><span class="step__num">3</span><div><h3>Configure DriverManager</h3><p>Use <code>driverClass =&gt; Turso\Doctrine\DBAL\Driver::class</code> and pick local, remote, replica, or offline-write params. See the <a href="{{ site.baseurl }}/user-manual/">user manual</a>.</p></div></li>
+                    </ol>
+                </div>
+                <div class="terminal">
+                    <div class="terminal__bar"><div class="terminal__dots"><span></span><span></span><span></span></div><span class="terminal__label">shell</span><button class="copy-btn" id="copy-install" aria-label="Copy install command">Copy</button></div>
+<pre><code><span class="prompt">$</span> <span id="install-command">composer require tursodatabase/turso-doctrine-dbal</span>
+
+<span class="out"># verify extension</span>
+<span class="prompt">$</span> php -m | grep libsql
+
+<span class="out"># run tests in this repo</span>
+<span class="prompt">$</span> composer install &amp;&amp; ./vendor/bin/phpunit</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <section class="manual-cta">
+            <div class="container">
+                <div class="manual-cta__inner">
+                    <div>
+                        <h2>Need the full driver manual?</h2>
+                        <p>The user manual covers configuration, connection modes, DBAL usage, transactions, offline writes, verification harnesses, limitations, troubleshooting, and API reference.</p>
+                    </div>
+                    <div class="manual-cta__actions">
+                        <a class="btn btn--primary" href="{{ site.baseurl }}/user-manual/">Open user manual</a>
+                        <a class="btn btn--ghost" href="{{ site.baseurl }}/user-manual/reference/api/">API reference</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a class="brand" href="{{ site.baseurl }}/"><span class="brand__mark"><img src="{{ site.baseurl }}/images/turso-doctrine-dbal-logo.png" alt="" width="30" height="30"></span><span>Turso Doctrine DBAL</span></a>
+                    <p>Doctrine DBAL driver for libSQL/Turso. Open source, MIT licensed.</p>
+                </div>
+                <div class="footer-col"><h4>Docs</h4><a href="{{ site.baseurl }}/user-manual/">Overview</a><a href="{{ site.baseurl }}/user-manual/getting-started/">Getting started</a><a href="{{ site.baseurl }}/user-manual/reference/api/">API reference</a></div>
+                <div class="footer-col"><h4>Project</h4><a href="https://github.com/tursodatabase/turso-doctrine-dbal">GitHub</a><a href="https://github.com/tursodatabase/turso-doctrine-dbal/issues">Issues</a><a href="https://github.com/tursodatabase/turso-doctrine-dbal/blob/main/CHANGELOG.md">Changelog</a></div>
+                <div class="footer-col"><h4>Ecosystem</h4><a href="https://github.com/tursodatabase/turso-client-php">turso-client-php</a><a href="https://www.doctrine-project.org/projects/dbal.html">Doctrine DBAL</a></div>
+            </div>
+            <div class="footer-bottom">
+                <span>© <span id="year"></span> tursodatabase. MIT License.</span>
+                <span>Built on libSQL PHP extension.</span>
+            </div>
+        </div>
+    </footer>
+    <script src="{{ site.baseurl }}/assets/js/landing.js" defer></script>
+</body>
+</html>

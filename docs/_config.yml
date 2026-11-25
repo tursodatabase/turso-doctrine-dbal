@@ -1,0 +1,33 @@
+title: Turso Doctrine DBAL
+tagline: Doctrine DBAL driver for libSQL and Turso
+description: >-
+  A Doctrine DBAL 4 driver for libSQL/Turso built on the native libSQL PHP
+  extension. Supports local, remote, embedded replica, and offline-write modes
+  with standard DBAL APIs, transactions, schema operations, and streaming reads.
+url: https://tursodatabase.github.io
+baseurl: /turso-doctrine-dbal
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    block:
+      line_numbers: false
+
+permalink: pretty
+
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+  - .jekyll-cache
+  - _site
+
+defaults:
+  - scope:
+      path: "user-manual"
+    values:
+      layout: manual
