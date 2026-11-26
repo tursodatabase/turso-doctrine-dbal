@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img alt="Turso + Doctrine DBAL" src="https://i.imgur.com/r009n2u.png" width="1000">
+  <img alt="Turso + Doctrine DBAL" src="art/Doctrine.png" width="1000">
 </p>
 
 <p align="center">
